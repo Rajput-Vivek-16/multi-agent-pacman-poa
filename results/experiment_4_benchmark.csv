@@ -1,0 +1,9 @@
+Method,Team Return,Return 95% CI,PoA,Gap Recovered (%),Gini Index,Captures,Steps to Clear
+Random,-903.68,139.97,1.0,0.0,0.429,28.0,81.16
+Independent Greedy,156.15,5.51,1.096,38.7,0.228,0.0,18.84
+Selfish Q-Learning,146.65,11.72,1.168,0.0,0.251,0.2,19.08
+Equal-Share Q-Learning,38.48,31.89,4.45,0.0,0.525,1.48,38.64
+DCOP-DSA (B=12),156.46,5.74,1.094,39.9,0.125,0.0,18.96
+DCOP-Max-Sum (B=24),158.8,5.96,1.078,49.5,0.122,0.0,18.24
+Shapley Q-Learning (λ=0.5),145.87,12.81,1.174,0.0,0.236,0.36,16.64
+Centralized Planner (π*),171.22,3.26,1.0,100.0,0.147,0.0,13.64
