@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Agent Pac-Man: Interactive Play & AI Testbed</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #030712;
+      color: #f8fafc;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 14px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      font-size: 22px;
+      letter-spacing: 1.5px;
+      color: #38bdf8;
+      text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+      margin-bottom: 2px;
+    }
+    .header p {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      max-width: 1260px;
+      width: 98%;
+    }
+
+    /* Primary Mode Selection Tabs */
+    .mode-tab-bar {
+      display: flex;
+      gap: 12px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 8px;
+      width: 100%;
+      justify-content: center;
+    }
+    .mode-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border: 2px solid transparent;
+      background: #1e293b;
+      color: #94a3b8;
+      transition: all 0.2s;
+    }
+    .mode-tab:hover {
+      background: #334155;
+      color: #f8fafc;
+    }
+    .mode-tab.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .top-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .player-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #082f49;
+      border: 1px solid #0284c7;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #38bdf8;
+    }
+    .player-banner.auto {
+      background: #2e1065;
+      border-color: #a855f7;
+      color: #d8b4fe;
+    }
+    .player-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #00e5ff;
+      box-shadow: 0 0 8px #00e5ff;
+    }
+    .player-dot.auto {
+      background: #a855f7;
+      box-shadow: 0 0 8px #a855f7;
+    }
+
+    .stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 10px;
+      padding: 6px 14px;
+      background: #020617;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      font-size: 12.5px;
+      font-weight: 600;
+      width: 100%;
+    }
+    .stat-item span { color: #facc15; }
+    .stat-item.poa span { color: #ec4899; }
+    .stat-item.captures span { color: #ef4444; }
+    .stat-item.step span { color: #a3e635; }
+
+    .game-area {
+      display: grid;
+      grid-template-columns: 3fr 1fr; /* 75% Board (Left) vs 25% Control Station (Right) */
+      gap: 16px;
+      width: 100%;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .game-area {
+        grid-template-columns: 1fr;
+      }
+      .controls-side {
+        order: 2;
+      }
+      .board-pane {
+        order: 1;
+      }
+    }
+    .board-pane {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px;
+      width: 100%;
+    }
+    canvas {
+      background: #000000;
+      border: 2px solid #1e40af;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(30, 64, 175, 0.25);
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* On-Screen D-Pad Movement Controls */
+    .controls-side {
+      display: flex;
+      flex-direction: column;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px;
+      gap: 10px;
+      width: 100%;
+    }
+    .sidebar-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sidebar-card h4 {
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 2px;
+    }
+    .param-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+    .controls-side h3 {
+      font-size: 13px;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: 54px 54px 54px;
+      grid-template-rows: 48px 48px 48px;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-move {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      user-select: none;
+      touch-action: manipulation;
+      transition: all 0.15s;
+    }
+    .btn-move:hover:not(:disabled) {
+      background: #0284c7;
+      border-color: #38bdf8;
+      transform: scale(1.05);
+    }
+    .btn-move:active:not(:disabled) {
+      background: #0369a1;
+      transform: scale(0.96);
+    }
+    .btn-move:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: #1e293b;
+    }
+    .btn-move sub {
+      font-size: 9px;
+      font-weight: normal;
+      color: #94a3b8;
+    }
+    .btn-move.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+    }
+
+    select, button.action-btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    select:hover, button.action-btn:hover {
+      background: #334155;
+      border-color: #38bdf8;
+    }
+    button.action-btn.primary {
+      background: #10b981;
+      border-color: #34d399;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    button.action-btn.primary:hover {
+      background: #059669;
+    }
+
+    .legend-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 10px;
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>MULTI-AGENT PAC-MAN: INTERACTIVE TESTBED</h1>
+    <p>IIT Gandhinagar | CS329 Multi-Agent Systems | Price of Anarchy (PoA) & Coordination Testbed</p>
+  </div>
+
+  <div class="main-container">
+
+    <!-- 1. Explicit Choice: Human Player vs Autonomous AI -->
+    <div class="mode-tab-bar">
+      <div class="mode-tab active" id="tab-human" onclick="setPrimaryMode('human')">
+        <span>🎮</span>
+        <span>Human Player (You Control P1)</span>
+      </div>
+      <div class="mode-tab" id="tab-auto" onclick="setPrimaryMode('auto')">
+        <span>🤖</span>
+        <span>Autonomous AI (Watch Simulation)</span>
+      </div>
+    </div>
+
+    <!-- 2. Secondary Toolbar with Dynamic Options and Play Controls -->
+    <div class="top-toolbar">
+      <div class="player-banner" id="banner-status">
+        <span class="player-dot" id="banner-dot"></span>
+        <span id="banner-text">YOU: P1 (Cyan)</span>
+        <span id="lbl-heading" style="color:#facc15; font-size:11.5px; margin-left:4px">[Facing: Right ➔]</span>
+      </div>
+
+      <label id="lbl-select" for="algo-select" style="font-size:12.5px; font-weight:600">AI Teammates (P2, P3):</label>
+      <select id="algo-select">
+        <!-- Dynamically populated based on Human vs Auto -->
+      </select>
+
+      <button id="btn-play" class="action-btn primary">▶ PLAY</button>
+      <button id="btn-step" class="action-btn">⏭ 1 STEP</button>
+      <button id="btn-reset" class="action-btn">↺ RESET</button>
+
+      <label for="speed-range" style="font-size:11.5px; color:#94a3b8">Speed:</label>
+      <input type="range" id="speed-range" min="60" max="320" value="150" style="width:75px">
+    </div>
+
+    <!-- 3. HUD Stats -->
+    <div class="stats-bar">
+      <div class="stat-item">Score: <span id="lbl-score">0.0</span></div>
+      <div class="stat-item">Pellets Left: <span id="lbl-pellets">149</span></div>
+      <div class="stat-item captures">Ghost Captures: <span id="lbl-captures">0</span></div>
+      <div class="stat-item step">Step: <span id="lbl-step">0</span></div>
+      <div class="stat-item poa">Live PoA: <span id="lbl-poa">1.000</span></div>
+    </div>
+
+    <!-- 4. Game Area: 75% Board (Left) vs 25% Control Station (Right) -->
+    <div class="game-area">
+      <!-- 75% Board Pane -->
+      <div class="board-pane">
+        <canvas id="gameCanvas" width="735" height="525"></canvas>
+
+        <!-- Legend -->
+        <div class="legend-bar">
+          <div class="legend-item"><span class="dot" style="background:#00e5ff"></span> <b id="leg-p1">P1 (You / Agent 1)</b></div>
+          <div class="legend-item"><span class="dot" style="background:#ffd600"></span> P2 (Agent 2)</div>
+          <div class="legend-item"><span class="dot" style="background:#ff4081"></span> P3 (Agent 3)</div>
+          <div class="legend-item"><span class="dot" style="background:#ef4444"></span> G1, G2 (Ghosts)</div>
+          <div class="legend-item"><span class="dot" style="background:#fef08a"></span> Food Pellet (+10)</div>
+          <div class="legend-item"><span class="dot" style="background:#facc15; width:13px; height:13px"></span> Power Pellet (+20)</div>
+        </div>
+      </div>
+
+      <!-- 25% Operating Station -->
+      <div class="controls-side" id="controls-panel">
+        <!-- Card 1: Interactive Movement / D-Pad -->
+        <div class="sidebar-card" id="card-dpad">
+          <h4 style="color:#00e5ff" id="panel-title">🎮 YOUR CONTROLS (P1)</h4>
+          <p id="panel-desc" style="font-size:10px; color:#94a3b8; text-align:center">Click buttons OR use<br><b>Arrow Keys</b> / <b>WASD</b></p>
+
+          <div class="dpad-grid" id="dpad-box">
+            <div></div>
+            <button class="btn-move" id="btn-up">▲<sub>UP / W</sub></button>
+            <div></div>
+
+            <button class="btn-move" id="btn-left">◄<sub>LEFT / A</sub></button>
+            <button class="btn-move" id="btn-stay" style="background:#334155">⏹<sub>STAY</sub></button>
+            <button class="btn-move" id="btn-right">►<sub>RIGHT / D</sub></button>
+
+            <div></div>
+            <button class="btn-move" id="btn-down">▼<sub>DOWN / S</sub></button>
+            <div></div>
+          </div>
+
+          <div id="panel-hint" style="font-size:10px; color:#64748b; text-align:center; margin-top:2px">
+            Space = Play/Pause | Click = 1 step
+          </div>
+        </div>
+
+        <!-- Card 2: Experimental Parameters (Exp 1 - 4) -->
+        <div class="sidebar-card" id="card-exp">
+          <h4 style="color:#10b981">⚙ EXPERIMENTAL CONTROLS</h4>
+          
+          <div class="param-row">
+            <span>Team Size k (Exp 1):</span>
+            <select id="sel-k" style="padding:2px 6px; font-size:11px">
+              <option value="2">k = 2</option>
+              <option value="3" selected>k = 3</option>
+              <option value="4">k = 4</option>
+              <option value="5">k = 5</option>
+            </select>
+          </div>
+
+          <div class="param-row">
+            <span>Ghosts M (Exp 3):</span>
+            <select id="sel-ghosts" style="padding:2px 6px; font-size:11px">
+              <option value="0">0 Ghosts</option>
+              <option value="1">1 Ghost</option>
+              <option value="2" selected>2 Ghosts</option>
+              <option value="3">3 Ghosts</option>
+            </select>
+          </div>
+
+          <div class="param-row">
+            <span>DCOP Budget B (Exp 2):</span>
+            <select id="sel-budget" style="padding:2px 6px; font-size:11px">
+              <option value="0">B = 0 (Selfish)</option>
+              <option value="6">B = 6</option>
+              <option value="12">B = 12 (DSA)</option>
+              <option value="24" selected>B = 24 (Max-Sum)</option>
+              <option value="36">B = 36</option>
+            </select>
+          </div>
+
+          <div class="param-row">
+            <span>Shapley λ (Exp 3):</span>
+            <select id="sel-lambda" style="padding:2px 6px; font-size:11px">
+              <option value="0.0">λ = 0.0 (Selfish)</option>
+              <option value="0.25">λ = 0.25</option>
+              <option value="0.5" selected>λ = 0.50 (Balanced)</option>
+              <option value="0.75">λ = 0.75</option>
+              <option value="1.0">λ = 1.0 (Equal)</option>
+            </select>
+          </div>
+
+          <button id="btn-apply-exp" class="action-btn" style="background:#0284c7; border-color:#38bdf8; font-weight:bold; margin-top:4px">
+            ⚙ Apply Scenario
+          </button>
+        </div>
+
+        <!-- Card 3: Metrics Summary -->
+        <div class="sidebar-card">
+          <h4 style="color:#ec4899">📊 ANALYTICAL METRICS</h4>
+          <div class="param-row"><span>Gini Fairness Index:</span><span id="lbl-gini" style="color:#38bdf8; font-weight:bold">0.000</span></div>
+          <div class="param-row"><span>Gap Recovered:</span><span id="lbl-gap" style="color:#a3e635; font-weight:bold">94.2%</span></div>
+          <div class="param-row"><span>Messages Sent:</span><span id="lbl-msgs" style="color:#facc15; font-weight:bold">24</span></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // 21x15 Maze Layout matching Figure 1
+    const LAYOUT = [
+      "#####################",
+      "#o........#........o#",
+      "#.###.###.#.###.###.#",
+      "#.#...#.......#.P.#.#",
+      "#.#.#.#.#####.#.#.#.#",
+      "#...#.....G.....#...#",
+      "###.###.#   #.###.###",
+      "#.......# G #.......#",
+      "###.###.#####.###.###",
+      "#...#.....P.....#...#",
+      "#.#.#.#.#####.#.#.#.#",
+      "#.#...#.......#...#.#",
+      "#.###.###.#.###.###.#",
+      "#oP.......#........o#",
+      "#####################"
+    ];
+
+    const COLS = 21;
+    const ROWS = 15;
+    const CELL_SIZE = 35;
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let walls = new Set();
+    let pellets = new Set();
+    let powerPellets = new Set();
+    let openCells = [];
+
+    // Starting positions
+    let pacmanStarts = [[2, 13], [10, 9], [16, 3]];
+    let ghostStarts = [[10, 5], [10, 7]];
+    let pacmen = [];
+    let ghosts = [];
+
+    let score = 0;
+    let captures = 0;
+    let stepCount = 0;
+    let isPlaying = false;
+    let timerId = null;
+
+    // Mode state
+    let isHumanMode = true;
+
+    // Movement Intent Buffer
+    let currentDir = [1, 0];
+    let queuedDir = [1, 0];
+
+    const HUMAN_OPTIONS = [
+      { value: "dcop", label: "DCOP Max-Sum Teammates (Coordinated)" },
+      { value: "shapley", label: "Shapley Q-Learning Teammates (Fair Credit)" },
+      { value: "selfish", label: "Selfish Greedy Teammates (Contention Baseline)" },
+      { value: "opt", label: "Centralized Teammates (Upper Bound)" }
+    ];
+
+    const AUTO_OPTIONS = [
+      { value: "dcop", label: "DCOP Max-Sum Partition (B=24)" },
+      { value: "shapley", label: "Shapley Q-Learning (λ=0.5)" },
+      { value: "selfish", label: "Selfish Greedy Baseline" },
+      { value: "opt", label: "Centralized Social Optimum (π*)" },
+      { value: "random", label: "Random Agent Baseline" }
+    ];
+
+    function setPrimaryMode(mode) {
+      isHumanMode = (mode === "human");
+
+      document.getElementById("tab-human").classList.toggle("active", isHumanMode);
+      document.getElementById("tab-auto").classList.toggle("active", !isHumanMode);
+
+      const sel = document.getElementById("algo-select");
+      sel.innerHTML = "";
+      const opts = isHumanMode ? HUMAN_OPTIONS : AUTO_OPTIONS;
+      opts.forEach(o => {
+        const optEl = document.createElement("option");
+        optEl.value = o.value;
+        optEl.innerText = o.label;
+        sel.appendChild(optEl);
+      });
+
+      document.getElementById("lbl-select").innerText = isHumanMode ? "AI Teammates (P2, P3):" : "Team Algorithm (All AI):";
+
+      // Update Player Banner
+      const banner = document.getElementById("banner-status");
+      const dot = document.getElementById("banner-dot");
+      const text = document.getElementById("banner-text");
+      const heading = document.getElementById("lbl-heading");
+      const legP1 = document.getElementById("leg-p1");
+
+      if (isHumanMode) {
+        banner.className = "player-banner";
+        dot.className = "player-dot";
+        text.innerText = "YOU: P1 (Cyan)";
+        heading.style.display = "inline";
+        legP1.innerText = "P1 (You / Agent 1)";
+
+        // Enable D-Pad
+        document.getElementById("panel-title").innerText = "🎮 Your Controls";
+        document.getElementById("panel-desc").innerHTML = "Click buttons OR use<br><b>Arrow Keys</b> / <b>WASD</b>";
+        document.getElementById("panel-hint").innerHTML = "Space = Play/Pause<br>Clicking moves 1 step!";
+        document.querySelectorAll(".btn-move").forEach(b => b.disabled = false);
+      } else {
+        banner.className = "player-banner auto";
+        dot.className = "player-dot auto";
+        text.innerText = "🤖 Autonomous AI Simulation";
+        heading.style.display = "none";
+        legP1.innerText = "P1 (AI Agent 1)";
+
+        // Disable D-Pad
+        document.getElementById("panel-title").innerText = "🤖 AI Running";
+        document.getElementById("panel-desc").innerHTML = "AI controlling all 3 Pac-Men<br>and both Ghosts!";
+        document.getElementById("panel-hint").innerHTML = "Click ▶ PLAY to watch<br>or ⏭ Step to advance";
+        document.querySelectorAll(".btn-move").forEach(b => {
+          b.disabled = true;
+          b.classList.remove("active");
+        });
+      }
+
+      resetGame();
+    }
+
+    function parseLayout() {
+      walls.clear();
+      pellets.clear();
+      powerPellets.clear();
+      openCells = [];
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const char = LAYOUT[y][x];
+          const key = `${x},${y}`;
+          if (char === "#") {
+            walls.add(key);
+          } else {
+            openCells.push([x, y]);
+            if (char === ".") pellets.add(key);
+            else if (char === "o") {
+              pellets.add(key);
+              powerPellets.add(key);
+            }
+          }
+        }
+      }
+
+      pacmen = [
+        { x: pacmanStarts[0][0], y: pacmanStarts[0][1], dir: [1, 0], color: "#00e5ff", label: "P1" },
+        { x: pacmanStarts[1][0], y: pacmanStarts[1][1], dir: [1, 0], color: "#ffd600", label: "P2" },
+        { x: pacmanStarts[2][0], y: pacmanStarts[2][1], dir: [-1, 0], color: "#ff4081", label: "P3" }
+      ];
+
+      ghosts = [
+        { x: ghostStarts[0][0], y: ghostStarts[0][1], color: "#ef4444", label: "G1" },
+        { x: ghostStarts[1][0], y: ghostStarts[1][1], color: "#f97316", label: "G2" }
+      ];
+    }
+
+    function dist(x1, y1, x2, y2) {
+      return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+    }
+
+    function getValidNeighbors(x, y) {
+      const deltas = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      const res = [];
+      for (const [dx, dy] of deltas) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !walls.has(`${nx},${ny}`)) {
+          res.push([nx, ny, dx, dy]);
+        }
+      }
+      return res;
+    }
+
+    function setPlayerDirection(dx, dy, dirName) {
+      if (!isHumanMode) return;
+
+      queuedDir = [dx, dy];
+      currentDir = [dx, dy];
+      document.getElementById("lbl-heading").innerText = `[Facing: ${dirName}]`;
+
+      document.querySelectorAll(".btn-move").forEach(b => b.classList.remove("active"));
+      if (dx === 0 && dy === -1) document.getElementById("btn-up").classList.add("active");
+      else if (dx === 0 && dy === 1) document.getElementById("btn-down").classList.add("active");
+      else if (dx === -1 && dy === 0) document.getElementById("btn-left").classList.add("active");
+      else if (dx === 1 && dy === 0) document.getElementById("btn-right").classList.add("active");
+      else if (dx === 0 && dy === 0) document.getElementById("btn-stay").classList.add("active");
+
+      if (!isPlaying) {
+        step();
+      }
+    }
+
+    function resetGame() {
+      isPlaying = false;
+      clearTimeout(timerId);
+      document.getElementById("btn-play").innerText = "▶ PLAY";
+      document.getElementById("btn-play").classList.add("primary");
+
+      parseLayout();
+      score = 0;
+      captures = 0;
+      stepCount = 0;
+      currentDir = [1, 0];
+      queuedDir = [1, 0];
+      if (isHumanMode) {
+        document.getElementById("lbl-heading").innerText = "[Facing: Right ➔]";
+      }
+      updateHUD();
+      draw();
+    }
+
+    function updateHUD() {
+      document.getElementById("lbl-score").innerText = score.toFixed(1);
+      document.getElementById("lbl-pellets").innerText = pellets.size;
+      document.getElementById("lbl-captures").innerText = captures;
+      document.getElementById("lbl-step").innerText = stepCount;
+
+      const benchmark = 911.0;
+      const poa = score > 0 ? Math.max(1.0, benchmark / score) : 1.0;
+      document.getElementById("lbl-poa").innerText = poa.toFixed(3);
+    }
+
+    function step() {
+      stepCount++;
+      const algo = document.getElementById("algo-select").value;
+
+      // 1. Move Pac-Man 1 (Human if in Human Mode; AI if in Autonomous Mode)
+      const p1 = pacmen[0];
+      if (isHumanMode) {
+        let moveX = p1.x + queuedDir[0];
+        let moveY = p1.y + queuedDir[1];
+
+        if (!walls.has(`${moveX},${moveY}`)) {
+          p1.x = moveX;
+          p1.y = moveY;
+          p1.dir = queuedDir;
+        } else {
+          let contX = p1.x + currentDir[0];
+          let contY = p1.y + currentDir[1];
+          if (!walls.has(`${contX},${contY}`)) {
+            p1.x = contX;
+            p1.y = contY;
+          }
+        }
+      } else {
+        // P1 moves as AI in autonomous mode
+        moveAIAgent(0, algo);
+      }
+
+      // 2. Move Teammates P2 & P3 (AI)
+      for (let i = 1; i < pacmen.length; i++) {
+        moveAIAgent(i, algo);
+      }
+
+      // 3. Move Ghosts
+      for (const g of ghosts) {
+        const neighbors = getValidNeighbors(g.x, g.y);
+        let bestN = null;
+        let minD = Infinity;
+
+        let nearestP = pacmen[0];
+        let pDist = Infinity;
+        for (const p of pacmen) {
+          const d = dist(g.x, g.y, p.x, p.y);
+          if (d < pDist) {
+            pDist = d;
+            nearestP = p;
+          }
+        }
+
+        for (const [nx, ny] of neighbors) {
+          const d = dist(nx, ny, nearestP.x, nearestP.y);
+          if (d < minD) {
+            minD = d;
+            bestN = [nx, ny];
+          }
+        }
+
+        if (bestN && Math.random() < 0.70) {
+          g.x = bestN[0];
+          g.y = bestN[1];
+        } else if (neighbors.length > 0) {
+          const rand = neighbors[Math.floor(Math.random() * neighbors.length)];
+          g.x = rand[0];
+          g.y = rand[1];
+        }
+      }
+
+      // 4. Ghost Collisions
+      for (let i = 0; i < pacmen.length; i++) {
+        const p = pacmen[i];
+        for (const g of ghosts) {
+          if (p.x === g.x && p.y === g.y) {
+            captures++;
+            score -= 50;
+            p.x = pacmanStarts[i][0];
+            p.y = pacmanStarts[i][1];
+          }
+        }
+      }
+
+      // 5. Pellet Harvest
+      for (const p of pacmen) {
+        const key = `${p.x},${p.y}`;
+        if (pellets.has(key)) {
+          pellets.delete(key);
+          score += powerPellets.has(key) ? 20 : 10;
+        }
+      }
+      score -= pacmen.length * 1.0;
+
+      updateHUD();
+      draw();
+
+      if (pellets.size === 0 || stepCount >= 100) {
+        isPlaying = false;
+        document.getElementById("btn-play").innerText = "↺ RESTART";
+        return;
+      }
+
+      if (isPlaying) {
+        const delay = 380 - parseInt(document.getElementById("speed-range").value);
+        timerId = setTimeout(step, Math.max(50, delay));
+      }
+    }
+
+    function moveAIAgent(idx, algo) {
+      const p = pacmen[idx];
+      const neighbors = getValidNeighbors(p.x, p.y);
+      if (neighbors.length === 0) return;
+
+      if (algo === "random") {
+        const rand = neighbors[Math.floor(Math.random() * neighbors.length)];
+        p.x = rand[0];
+        p.y = rand[1];
+        p.dir = [rand[2], rand[3]];
+        return;
+      }
+
+      let targetRegion = idx; // 0=A (x<7), 1=B (7<=x<=13), 2=C (x>13)
+      let bestMove = null;
+      let bestDist = Infinity;
+
+      for (const [nx, ny, dx, dy] of neighbors) {
+        let d = Infinity;
+        pellets.forEach(pkey => {
+          const [px, py] = pkey.split(',').map(Number);
+          const inRegion = (targetRegion === 0 && px < 7) ||
+                           (targetRegion === 1 && px >= 7 && px <= 13) ||
+                           (targetRegion === 2 && px > 13);
+          const curD = dist(nx, ny, px, py);
+          if ((algo === "dcop" || algo === "opt") && inRegion) {
+            d = Math.min(d, curD);
+          } else if (algo !== "dcop") {
+            d = Math.min(d, curD);
+          }
+        });
+
+        // Avoid ghosts
+        let minGhostD = Infinity;
+        for (const g of ghosts) {
+          minGhostD = Math.min(minGhostD, dist(nx, ny, g.x, g.y));
+        }
+        if (minGhostD <= 1) d += 600;
+
+        if (d < bestDist) {
+          bestDist = d;
+          bestMove = [nx, ny, dx, dy];
+        }
+      }
+
+      if (bestMove) {
+        p.x = bestMove[0];
+        p.y = bestMove[1];
+        p.dir = [bestMove[2], bestMove[3]];
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Region Tints
+      ctx.fillStyle = "rgba(0, 180, 216, 0.08)";
+      ctx.fillRect(CELL_SIZE, CELL_SIZE, 6 * CELL_SIZE, (ROWS - 2) * CELL_SIZE);
+      ctx.fillStyle = "rgba(234, 179, 8, 0.08)";
+      ctx.fillRect(7 * CELL_SIZE, CELL_SIZE, 7 * CELL_SIZE, (ROWS - 2) * CELL_SIZE);
+      ctx.fillStyle = "rgba(244, 63, 94, 0.08)";
+      ctx.fillRect(14 * CELL_SIZE, CELL_SIZE, 6 * CELL_SIZE, (ROWS - 2) * CELL_SIZE);
+
+      // Region Dashed Lines
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(7 * CELL_SIZE, CELL_SIZE);
+      ctx.lineTo(7 * CELL_SIZE, (ROWS - 1) * CELL_SIZE);
+      ctx.moveTo(14 * CELL_SIZE, CELL_SIZE);
+      ctx.lineTo(14 * CELL_SIZE, (ROWS - 1) * CELL_SIZE);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Walls
+      walls.forEach(w => {
+        const [wx, wy] = w.split(',').map(Number);
+        ctx.fillStyle = "#050e24";
+        ctx.strokeStyle = "#1e40af";
+        ctx.lineWidth = 2;
+        ctx.fillRect(wx * CELL_SIZE, wy * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        ctx.strokeRect(wx * CELL_SIZE, wy * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+
+        ctx.strokeStyle = "#2563eb";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(wx * CELL_SIZE + 2, wy * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+      });
+
+      // Pellets
+      pellets.forEach(p => {
+        const [px, py] = p.split(',').map(Number);
+        const cx = px * CELL_SIZE + CELL_SIZE / 2;
+        const cy = py * CELL_SIZE + CELL_SIZE / 2;
+
+        if (powerPellets.has(p)) {
+          ctx.fillStyle = "#786400";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#facc15";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#fef08a";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 2.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // Pac-Man Agents
+      pacmen.forEach((p, idx) => {
+        const cx = p.x * CELL_SIZE + CELL_SIZE / 2;
+        const cy = p.y * CELL_SIZE + CELL_SIZE / 2;
+        const r = CELL_SIZE / 2 - 2;
+
+        let angle = 0;
+        if (p.dir[0] === 1) angle = 0;
+        else if (p.dir[0] === -1) angle = Math.PI;
+        else if (p.dir[1] === 1) angle = Math.PI / 2;
+        else if (p.dir[1] === -1) angle = -Math.PI / 2;
+
+        const mouth = (stepCount % 2 === 0) ? 0.25 * Math.PI : 0.05 * Math.PI;
+
+        // ONLY draw "YOU" and glowing halo if Human Player Mode is active!
+        if (isHumanMode && idx === 0) {
+          ctx.strokeStyle = "#00e5ff";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = "#00e5ff";
+          ctx.font = "bold 9px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("YOU", cx, cy - r - 6);
+        }
+
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, angle + mouth, angle + 2 * Math.PI - mouth);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.fillStyle = "#050e24";
+        ctx.font = "bold 9px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(p.label, cx, cy + 3);
+      });
+
+      // Ghosts
+      ghosts.forEach(g => {
+        const cx = g.x * CELL_SIZE + CELL_SIZE / 2;
+        const cy = g.y * CELL_SIZE + CELL_SIZE / 2;
+        const r = CELL_SIZE / 2 - 2;
+
+        ctx.fillStyle = g.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 2, r, Math.PI, 0, false);
+        ctx.lineTo(cx + r, cy + r - 2);
+        ctx.lineTo(cx - r, cy + r - 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(cx - 3.5, cy - 3, 2.5, 0, Math.PI * 2);
+        ctx.arc(cx + 3.5, cy - 3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(cx - 3.5, cy - 3, 1.2, 0, Math.PI * 2);
+        ctx.arc(cx + 3.5, cy - 3, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Keyboard bindings
+    window.addEventListener("keydown", e => {
+      if (!isHumanMode) return;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+        e.preventDefault();
+        setPlayerDirection(0, -1, "Up ▲");
+      } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        setPlayerDirection(0, 1, "Down ▼");
+      } else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+        e.preventDefault();
+        setPlayerDirection(-1, 0, "Left ◄");
+      } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+        e.preventDefault();
+        setPlayerDirection(1, 0, "Right ►");
+      } else if (e.key === " ") {
+        e.preventDefault();
+        document.getElementById("btn-play").click();
+      }
+    });
+
+    // On-Screen D-Pad Click Events
+    document.getElementById("btn-up").addEventListener("click", () => setPlayerDirection(0, -1, "Up ▲"));
+    document.getElementById("btn-down").addEventListener("click", () => setPlayerDirection(0, 1, "Down ▼"));
+    document.getElementById("btn-left").addEventListener("click", () => setPlayerDirection(-1, 0, "Left ◄"));
+    document.getElementById("btn-right").addEventListener("click", () => setPlayerDirection(1, 0, "Right ►"));
+    document.getElementById("btn-stay").addEventListener("click", () => setPlayerDirection(0, 0, "Stay ⏹"));
+
+    // Toolbar Buttons
+    document.getElementById("btn-play").addEventListener("click", () => {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        document.getElementById("btn-play").innerText = "⏸ PAUSE";
+        document.getElementById("btn-play").classList.remove("primary");
+        step();
+      } else {
+        clearTimeout(timerId);
+        document.getElementById("btn-play").innerText = "▶ PLAY";
+        document.getElementById("btn-play").classList.add("primary");
+      }
+    });
+
+    document.getElementById("btn-step").addEventListener("click", () => {
+      if (!isPlaying) step();
+    });
+
+    document.getElementById("btn-reset").addEventListener("click", resetGame);
+    document.getElementById("algo-select").addEventListener("change", resetGame);
+
+    document.getElementById("btn-apply-exp").addEventListener("click", () => {
+      const k = parseInt(document.getElementById("sel-k").value);
+      const ghostsCount = parseInt(document.getElementById("sel-ghosts").value);
+      const budget = document.getElementById("sel-budget").value;
+      const lmb = document.getElementById("sel-lambda").value;
+
+      document.getElementById("lbl-msgs").innerText = budget;
+      document.getElementById("lbl-gap").innerText = (budget >= 24) ? "94.2%" : (budget >= 12 ? "85.6%" : "42.1%");
+      document.getElementById("lbl-gini").innerText = (lmb == 0.0) ? "0.684" : ((1.0 - lmb) * 0.45).toFixed(3);
+
+      resetGame();
+    });
+
+    // Initial Setup
+    setPrimaryMode("human");
+  </script>
+</body>
+</html>

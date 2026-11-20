@@ -19,7 +19,7 @@
 \usepackage{array}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \graphicspath{{media/},{plots/}}
-
+can i
 \setlist{itemsep=2pt,topsep=3pt}
 \newtheorem{definition}{Definition}
 
@@ -72,8 +72,8 @@ We study this fundamental multi-agent coordination challenge in an extended Mult
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.62\linewidth]{fig_maze.png}
-  \caption{Illustration of the shared $21 \times 15$ maze environment with three Pac-Men ($k=3$), two ghosts ($g=2$), a shared pool of pellets, and a spatial partition into three balanced sectors (Region A, Region B, Region C) for DCOP-based coordination.}
+  \includegraphics[width=0.68\linewidth]{fig_maze_simulation.png}
+  \caption{Multi-Agent simulation environment on the $21 \times 15$ benchmark maze. The symmetric grid features three balanced vertical sectors (Region A: blue, Region B: yellow, Region C: magenta) demarcated by dashed dividers, three Pac-Men ($P_1, P_2, P_3$), two ghosts ($G_1, G_2$), standard food pellets (+10), and corner power pellets (+20).}
   \label{fig:maze}
 \end{figure}
 
@@ -202,24 +202,13 @@ We compare the proposed coordination methods against four established baselines:
 \end{enumerate}
 
 \subsection{High-Performance Simulator Architecture}
-In standard implementations, recursive environment copying (`copy.deepcopy`) copies 23,716 all-pairs shortest path distance entries per step, creating severe execution bottlenecks. We engineered a custom shallow-cloning architecture in \texttt{src/environment.py} that shares immutable static graph topologies, walls, and distance matrices across instances, while copying only dynamic state variables (agent coordinates, active pellet bitsets, and ghost vectors). This achieved a **$100\times$ speedup** ($0.18$s vs. $18.4$s per 1,000 steps), enabling comprehensive multi-seed statistical evaluation.
+In standard implementations, recursive environment copying (\texttt{copy.deepcopy}) copies 23,716 all-pairs shortest path distance entries per step, creating severe execution bottlenecks. We engineered a custom shallow-cloning architecture in \texttt{src/environment.py} that shares immutable static graph topologies, walls, and distance matrices across instances, while copying only dynamic state variables (agent coordinates, active pellet bitsets, and ghost vectors). This achieved a \textbf{100}$\times$ \textbf{speedup} ($0.18$s vs. $18.4$s per 1,000 steps), enabling comprehensive multi-seed statistical evaluation.
 
 % =====================================================================
 \section{Experimental Results and Discussion}
 % =====================================================================
 
 All experiments were executed on the $21 \times 15$ benchmark maze (\texttt{proposal\_maze}) across 25 independent evaluation episodes per condition ($T=100$ steps per episode), with results reported at 95\% confidence intervals.
-
-\subsection{Visual Gameplay and Trajectory Comparison}
-
-To visualize the coordination failure of selfish play and its recovery, Figure~\ref{fig:traj_comp} depicts mid-game simulation snapshots comparing uncoordinated selfish play against DCOP Max-Sum coordination.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.88\linewidth]{fig_trajectory_comparison.png}
-  \caption{Simulation snapshot comparison. \textbf{Left (Selfish Play):} All three Pac-Men converge onto the same central pellet cluster, causing repeated contention losses, corridor congestion, and multiple ghost captures. \textbf{Right (DCOP Max-Sum Coordination):} Agents are deconflicted into non-overlapping spatial sectors (Region A, B, and C), clearing pellets in parallel with zero contention.}
-  \label{fig:traj_comp}
-\end{figure}
 
 \subsection{Experiment 1: Effect of Team Size $k$ and Ghost Hazard $\beta$ on $\PoA$}
 We evaluated team sizes $k \in \{2, 3, 4\}$ across ghost aggression levels $\beta \in [0.0, 0.3, 0.6, 0.9]$. Figure~\ref{fig:e1} plots the resulting Price of Anarchy curves.
@@ -231,7 +220,7 @@ We evaluated team sizes $k \in \{2, 3, 4\}$ across ghost aggression levels $\bet
   \label{fig:e1}
 \end{figure}
 
-\noindent\textbf{Discussion:} When ghosts are non-aggressive ($\beta = 0.0$), the Price of Anarchy remains moderate ($\PoA \in [1.00, 1.50]$), as inefficiency arises solely from redundant pellet pursuit. However, as ghost aggression increases to $\beta = 0.9$, selfish agents become trapped in bottlenecks while fleeing ghosts, triggering repeated $-50$ capture penalties. At $k = 4, \beta = 0.9$, $\PoA$ reaches **$3.129$** ($J(\pi^\star) = 918.7$ vs. $J(\pi_{\mathrm{selfish}}) = 293.6$), representing a $>68\%$ collapse in social welfare. This confirms **Hypothesis 1 (H1)**: higher agent densities and active hazards compound coordination failure, severely widening the Price of Anarchy.
+\noindent\textbf{Discussion:} When ghosts are non-aggressive ($\beta = 0.0$), the Price of Anarchy remains moderate ($\PoA \in [1.00, 1.50]$), as inefficiency arises solely from redundant pellet pursuit. However, as ghost aggression increases to $\beta = 0.9$, selfish agents become trapped in bottlenecks while fleeing ghosts, triggering repeated $-50$ capture penalties. At $k = 4, \beta = 0.9$, $\PoA$ reaches \textbf{3.129} ($J(\pi^\star) = 918.7$ vs. $J(\pi_{\mathrm{selfish}}) = 293.6$), representing a $>68\%$ collapse in social welfare. This confirms \textbf{Hypothesis 1 (H1)}: higher agent densities and active hazards compound coordination failure, severely widening the Price of Anarchy.
 
 \subsection{Experiment 2: DCOP Message Budget Scaling ($B$)}
 We evaluated the fraction of the selfish performance gap recovered by DCOP Max-Sum and DSA across message budgets $B \in [0, 2, 6, 12, 20, 30]$ ($k=3, \beta=0.5$). Figure~\ref{fig:e2} illustrates convergence.
@@ -243,7 +232,7 @@ We evaluated the fraction of the selfish performance gap recovered by DCOP Max-S
   \label{fig:e2}
 \end{figure}
 
-\noindent\textbf{Discussion:} Under zero communication ($B=0$), both methods default to uncoordinated greedy region selection. As budget $B$ increases, Max-Sum rapidly deconflicts agents, recovering **$48.3\%$** of the gap at $B=30$ and **$62.3\%$** at $B=24$. In contrast, DSA plateaus around $27.2\%$. Because the region adjacency graph contains topological cycles, Max-Sum's belief propagation dampens cyclical message oscillations, whereas DSA's stochastic thresholding frequently triggers sub-optimal regional swapping. This confirms **Hypothesis 2 (H2)**: localized DCOP coordination recovers the majority of lost social welfare under bounded message budgets, with Max-Sum consistently outperforming DSA.
+\noindent\textbf{Discussion:} Under zero communication ($B=0$), both methods default to uncoordinated greedy region selection. As budget $B$ increases, Max-Sum rapidly deconflicts agents, recovering \textbf{48.3\%} of the gap at $B=30$ and \textbf{62.3\%} at $B=24$. In contrast, DSA plateaus around $27.2\%$. Because the region adjacency graph contains topological cycles, Max-Sum's belief propagation dampens cyclical message oscillations, whereas DSA's stochastic thresholding frequently triggers sub-optimal regional swapping. This confirms \textbf{Hypothesis 2 (H2)}: localized DCOP coordination recovers the majority of lost social welfare under bounded message budgets, with Max-Sum consistently outperforming DSA.
 
 \subsection{Experiment 3: Shapley Reward Shaping and Fairness}
 We trained MARL policies across Shapley mixing parameter $\lambda \in [0.0, 0.25, 0.50, 0.75, 1.00]$ and compared against the naive Equal-Share baseline. Figure~\ref{fig:e3} displays the dual-axis trade-off between team return and payoff inequality.
@@ -255,7 +244,7 @@ We trained MARL policies across Shapley mixing parameter $\lambda \in [0.0, 0.25
   \label{fig:e3}
 \end{figure}
 
-\noindent\textbf{Discussion:} Pure selfish learning ($\lambda = 0.0$) yields high payoff inequality ($\mathcal{G} = 0.512$) and low return ($465.4$) due to destructive pellet races. The naive Equal-Share baseline enforces low inequality ($\mathcal{G} = 0.102$) but suffers from the **free-rider pathology**: individual agents receive rewards even when avoiding hazardous corridors, slowing maze clearance. In contrast, balanced Shapley shaping ($\lambda = 0.50$) achieves a superior return of **$745.4$** with an equitable Gini index of $0.300$. This confirms **Hypothesis 3 (H3)**: marginal contribution shaping effectively resolves free-riding, incentivizing cooperative exploration while maintaining equitable credit allocation.
+\noindent\textbf{Discussion:} Pure selfish learning ($\lambda = 0.0$) yields high payoff inequality ($\mathcal{G} = 0.512$) and low return ($465.4$) due to destructive pellet races. The naive Equal-Share baseline enforces low inequality ($\mathcal{G} = 0.102$) but suffers from the \textbf{free-rider pathology}: individual agents receive rewards even when avoiding hazardous corridors, slowing maze clearance. In contrast, balanced Shapley shaping ($\lambda = 0.50$) achieves a superior return of \textbf{745.4} with an equitable Gini index of $0.300$. This confirms \textbf{Hypothesis 3 (H3)}: marginal contribution shaping effectively resolves free-riding, incentivizing cooperative exploration while maintaining equitable credit allocation.
 
 \subsection{Experiment 4: Comprehensive Multi-Method Benchmark}
 Table~\ref{tab:benchmark} and Figure~\ref{fig:e4} present the comprehensive comparative evaluation across all eight methods on the $21 \times 15$ maze ($k=3, g=2, \beta=0.5$).
@@ -295,7 +284,7 @@ DCOP-DSA ($B=12$) & Communication & $732.2$ & $\pm 41.0$ & $1.248$ & $27.2\%$ & 
 % =====================================================================
 
 \paragraph{Communication vs. Incentive Design:}
-Our findings illustrate a fundamental system design trade-off: DCOP spatial deconfliction provides robust real-time performance under small message budgets ($B=24$), but requires synchronized communication and shared regional representations. In contrast, Shapley value reward shaping requires **zero runtime communication**, enforcing coordination purely through offline counterfactual value alignment during training.
+Our findings illustrate a fundamental system design trade-off: DCOP spatial deconfliction provides robust real-time performance under small message budgets ($B=24$), but requires synchronized communication and shared regional representations. In contrast, Shapley value reward shaping requires \textbf{zero runtime communication}, enforcing coordination purely through offline counterfactual value alignment during training.
 
 \paragraph{Limitations:}
 First, computing exact Shapley values requires evaluating $2^k$ marginal coalitions, which is tractable for $k \le 5$ but requires Monte Carlo approximations or neural marginal estimators (e.g., Shapley Q-value networks) for larger agent cohorts. Second, ghosts execute stochastic heuristic policies rather than strategic adversarial learning policies.

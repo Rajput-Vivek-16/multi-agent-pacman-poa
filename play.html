@@ -148,6 +148,17 @@
       width: 100%;
       align-items: start;
     }
+    @media (max-width: 960px) {
+      .game-area {
+        grid-template-columns: 1fr;
+      }
+      .controls-side {
+        order: 2;
+      }
+      .board-pane {
+        order: 1;
+      }
+    }
     .board-pane {
       display: flex;
       flex-direction: column;
@@ -228,6 +239,7 @@
       justify-content: center;
       height: 100%;
       user-select: none;
+      touch-action: manipulation;
       transition: all 0.15s;
     }
     .btn-move:hover:not(:disabled) {

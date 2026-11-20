@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Course: CS329 Multi-Agent Systems](https://img.shields.io/badge/Course-CS329%20MAS-green.svg)](https://iitgn.ac.in)
 [![Status: Complete](https://img.shields.io/badge/Status-100%25%20Verified-brightgreen.svg)]()
+[![Play Online](https://img.shields.io/badge/🎮_Play_Live-Online_Arcade-ff007f.svg?style=for-the-badge)](https://tanujsharma2712.github.io/multi-agent-pacman-poa/)
 
 > **CS329: Multi-Agent Systems — Final Project Report & Testbed**  
 > **Indian Institute of Technology Gandhinagar (IITGN)**  
@@ -19,9 +20,9 @@
 > ### 🕹️ TEST & PLAY THE GAME DIRECTLY (Interactive Simulator & Playable Arcade)
 > **You can test and play this multi-agent game right now with zero friction!**
 > 
-> * **🌐 Option A: Instant Web Arcade (No Installation Needed)**  
->   Simply double-click or open [**`play.html`**](play.html) in any browser (Chrome, Edge, Firefox, Safari).  
->   *(If hosted via GitHub Pages, visit: `https://<username>.github.io/<repo>/play.html`)*
+> * **🌐 Option A: Instant Web Arcade (Anyone Can Play With This Link!)**  
+>   **👉 Direct Live Link: [https://tanujsharma2712.github.io/multi-agent-pacman-poa/](https://tanujsharma2712.github.io/multi-agent-pacman-poa/)**  
+>   *(Zero setup required: works in any web browser on desktop, laptop, tablet, or smartphone! You can also double-click [**`index.html`**](index.html) or [**`play.html`**](play.html) locally).*
 > 
 > * **🖥️ Option B: Desktop Python GUI (75% Arcade Board / 25% Control Station)**  
 >   Run the native Python Tkinter desktop application (zero external pip packages required):  
