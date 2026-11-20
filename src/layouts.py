@@ -9,6 +9,27 @@ Representation:
 """
 
 LAYOUTS = {
+    # 21x15 Multi-Agent Proposal Maze: exact layout from Project Proposal Figure 1
+    # Features 3 balanced vertical sectors (Region A, Region B, Region C),
+    # central ghost house, symmetric corridors, and 4 corner power pellets ('o')
+    "proposal_maze": [
+        "#####################",
+        "#o........#........o#",
+        "#.###.###.#.###.###.#",
+        "#.#...#.......#.P.#.#",
+        "#.#.#.#.#####.#.#.#.#",
+        "#...#.....G.....#...#",
+        "###.###.#   #.###.###",
+        "#.......# G #.......#",
+        "###.###.#####.###.###",
+        "#...#.....P.....#...#",
+        "#.#.#.#.#####.#.#.#.#",
+        "#.#...#.......#...#.#",
+        "#.###.###.#.###.###.#",
+        "#oP.......#........o#",
+        "#####################"
+    ],
+
     # 6x6 Toy Maze: compact, great for exact analysis and equilibrium verification
     "toy": [
         "######",

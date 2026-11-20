@@ -41,6 +41,30 @@ class RegionPartition:
         if not open_list:
             return
 
+        # On proposal_maze with 3 regions, use exact Region A / B / C spatial column partitioning from Figure 1
+        if self.env.layout_name == "proposal_maze" and self.num_regions == 3:
+            for cell in open_list:
+                x, y = cell
+                if x < 7:
+                    r = 0  # Region A
+                elif x <= 13:
+                    r = 1  # Region B
+                else:
+                    r = 2  # Region C
+                self.region_cells[r].add(cell)
+                self.cell_to_region[cell] = r
+            
+            # Centers are the graph medoids of each region
+            self.centers = []
+            for r in range(3):
+                cells = list(self.region_cells[r])
+                medoid = min(
+                    cells,
+                    key=lambda u: sum(self.env.get_distance(u, v) for v in cells),
+                )
+                self.centers.append(medoid)
+            return
+
         # Choose m well-separated seed centers using furthest-point sampling
         seeds = [open_list[0]]
         for _ in range(1, self.num_regions):

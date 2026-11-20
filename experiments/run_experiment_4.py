@@ -1,17 +1,18 @@
 """
-Experiment 4: Comprehensive Benchmark across all Methods & Baselines:
-1. Random
-2. Independent Greedy
-3. Selfish Q-Learning (Independent Q)
-4. Equal-Share Q-Learning
+Experiment 4: Comprehensive Multi-Method Benchmark & Comparative Suite
+Evaluates all 8 baselines and remedies under identical experimental controls:
+1. Random Baseline
+2. Independent Greedy Baseline
+3. Selfish Q-Learning (lambda=0)
+4. Equal-Share Q-Learning (r_team / k)
 5. DCOP-DSA (B=12)
 6. DCOP-Max-Sum (B=24)
 7. Shapley-Shaped Q-Learning (lambda=0.5)
-8. Centralized Team Planner (pi*)
+8. Centralized Social Optimum (pi*)
 Outputs:
-- CSV Table
-- JSON dump
-- Multi-metric comparative bar chart
+- results/experiment_4_benchmark.csv
+- results/experiment_4_benchmark.json
+- plots/fig_e4_method_comparison.png (2x2 Multi-Panel Publication Figure)
 """
 
 import csv
@@ -28,9 +29,9 @@ from src.metrics import compute_gap_recovered, compute_poa
 from src.trainer import evaluate_policy, train_q_learning
 
 
-def run_experiment_4(layout_name: str = "small_grid", k: int = 3, num_episodes: int = 30):
+def run_experiment_4(layout_name: str = "proposal_maze", k: int = 3, num_episodes: int = 25):
     print("==================================================")
-    print("Running Experiment 4: Comprehensive Multi-Method Comparison")
+    print("Running Experiment 4: Comprehensive Multi-Method Benchmark")
     print("==================================================")
 
     methods = [
@@ -49,102 +50,58 @@ def run_experiment_4(layout_name: str = "small_grid", k: int = 3, num_episodes: 
     # 1. Random
     print("Evaluating 1/8: Random Agents...")
     res_rand = evaluate_policy(
-        "random", layout_name=layout_name, num_pacman=k, num_episodes=num_episodes, seed=10
+        "random", layout_name=layout_name, num_pacman=k, num_ghosts=2, num_episodes=num_episodes, seed=10
     )
 
     # 2. Independent Greedy
     print("Evaluating 2/8: Independent Greedy...")
     res_greedy = evaluate_policy(
-        "greedy", layout_name=layout_name, num_pacman=k, num_episodes=num_episodes, seed=20
+        "greedy", layout_name=layout_name, num_pacman=k, num_ghosts=2, num_episodes=num_episodes, seed=20
     )
 
     # 3. Selfish Q-Learning
     print("Evaluating 3/8: Selfish Q-Learning...")
     selfish_agents = train_q_learning(
-        layout_name=layout_name,
-        num_pacman=k,
-        mode="selfish",
-        num_episodes=70,
-        seed=30,
+        layout_name=layout_name, num_pacman=k, num_ghosts=2, mode="selfish", num_episodes=40, seed=30
     )
     res_selfish = evaluate_policy(
-        "q_learning",
-        layout_name=layout_name,
-        num_pacman=k,
-        trained_agents=selfish_agents,
-        num_episodes=num_episodes,
-        seed=35,
+        "q_learning", layout_name=layout_name, num_pacman=k, num_ghosts=2, trained_agents=selfish_agents, num_episodes=num_episodes, seed=35
     )
 
     # 4. Equal-Share Q-Learning
     print("Evaluating 4/8: Equal-Share Q-Learning...")
     eq_agents = train_q_learning(
-        layout_name=layout_name,
-        num_pacman=k,
-        mode="equal_share",
-        num_episodes=70,
-        seed=40,
+        layout_name=layout_name, num_pacman=k, num_ghosts=2, mode="equal_share", num_episodes=40, seed=40
     )
     res_eq = evaluate_policy(
-        "q_learning",
-        layout_name=layout_name,
-        num_pacman=k,
-        trained_agents=eq_agents,
-        num_episodes=num_episodes,
-        seed=45,
+        "q_learning", layout_name=layout_name, num_pacman=k, num_ghosts=2, trained_agents=eq_agents, num_episodes=num_episodes, seed=45
     )
 
     # 5. DCOP-DSA (B=12)
     print("Evaluating 5/8: DCOP-DSA (B=12)...")
     res_dsa = evaluate_policy(
-        "dcop",
-        layout_name=layout_name,
-        num_pacman=k,
-        dcop_algo="dsa",
-        dcop_budget=12,
-        num_episodes=num_episodes,
-        seed=50,
+        "dcop", layout_name=layout_name, num_pacman=k, num_ghosts=2, dcop_algo="dsa", dcop_budget=12, num_episodes=num_episodes, seed=50
     )
 
     # 6. DCOP-Max-Sum (B=24)
     print("Evaluating 6/8: DCOP-Max-Sum (B=24)...")
     res_ms = evaluate_policy(
-        "dcop",
-        layout_name=layout_name,
-        num_pacman=k,
-        dcop_algo="max_sum",
-        dcop_budget=24,
-        num_episodes=num_episodes,
-        seed=60,
+        "dcop", layout_name=layout_name, num_pacman=k, num_ghosts=2, dcop_algo="max_sum", dcop_budget=24, num_episodes=num_episodes, seed=60
     )
 
-    # 7. Shapley-Shaped Q-Learning
-    print("Evaluating 7/8: Shapley Q-Learning (lambda=0.5)...")
+    # 7. Shapley Q-Learning (lambda=0.5)
+    print("Evaluating 7/8: Shapley-Shaped Q-Learning (λ=0.5)...")
     shapley_agents = train_q_learning(
-        layout_name=layout_name,
-        num_pacman=k,
-        mode="shapley",
-        shapley_lambda=0.5,
-        num_episodes=70,
-        seed=70,
+        layout_name=layout_name, num_pacman=k, num_ghosts=2, mode="shapley", shapley_lambda=0.5, num_episodes=40, seed=70
     )
     res_shapley = evaluate_policy(
-        "q_learning",
-        layout_name=layout_name,
-        num_pacman=k,
-        trained_agents=shapley_agents,
-        num_episodes=num_episodes,
-        seed=75,
+        "q_learning", layout_name=layout_name, num_pacman=k, num_ghosts=2, trained_agents=shapley_agents, num_episodes=num_episodes, seed=75
     )
 
-    # 8. Centralized Team Planner
+    # 8. Centralized Social Optimum (pi*)
     print("Evaluating 8/8: Centralized Team Planner (pi*)...")
     res_opt = evaluate_policy(
-        "centralized",
-        layout_name=layout_name,
-        num_pacman=k,
-        num_episodes=num_episodes,
-        seed=80,
+        "centralized", layout_name=layout_name, num_pacman=k, num_ghosts=2, num_episodes=num_episodes, seed=80
     )
 
     raw_results = [
@@ -158,11 +115,11 @@ def run_experiment_4(layout_name: str = "small_grid", k: int = 3, num_episodes: 
         res_opt,
     ]
 
-    j_opt = res_opt["team_return_mean"]
-    j_selfish = res_selfish["team_return_mean"]
+    j_opt = float(res_opt["team_return_mean"])
+    j_selfish = float(res_selfish["team_return_mean"])
 
     for name, r in zip(methods, raw_results):
-        j_val = r["team_return_mean"]
+        j_val = float(r["team_return_mean"])
         recov = compute_gap_recovered(j_val, j_selfish, j_opt) * 100.0
         poa = compute_poa(j_opt, j_val)
         benchmark_data.append(
@@ -178,81 +135,99 @@ def run_experiment_4(layout_name: str = "small_grid", k: int = 3, num_episodes: 
             }
         )
 
-    # Print Table to console
-    print("\n================ BENCHMARK SUMMARY TABLE ================")
-    headers = [
-        "Method",
-        "Team Return",
-        "PoA",
-        "Gap Recov (%)",
-        "Gini",
-        "Captures",
-        "Steps",
-    ]
-    print(
-        f"{headers[0]:<28} | {headers[1]:<12} | {headers[2]:<6} | {headers[3]:<14} | {headers[4]:<6} | {headers[5]:<8} | {headers[6]:<6}"
-    )
-    print("-" * 92)
-    for row in benchmark_data:
-        print(
-            f"{row['Method']:<28} | {row['Team Return']:>6.2f} +/- {row['Return 95% CI']:<4.1f} | "
-            f"{row['PoA']:>6.3f} | {row['Gap Recovered (%)']:>13.1f}% | {row['Gini Index']:>6.3f} | "
-            f"{row['Captures']:>8.2f} | {row['Steps to Clear']:>6.1f}"
-        )
-
-    # Save to JSON and CSV
+    # Save to CSV
     os.makedirs("results", exist_ok=True)
-    with open("results/experiment_4_benchmark.json", "w") as f:
-        json.dump(benchmark_data, f, indent=2)
-
-    with open("results/experiment_4_benchmark.csv", "w", newline="") as f:
+    csv_file = "results/experiment_4_benchmark.csv"
+    with open(csv_file, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(benchmark_data[0].keys()))
         writer.writeheader()
         writer.writerows(benchmark_data)
 
-    # Generate Publication Plot
-    os.makedirs("plots", exist_ok=True)
-    names = [row["Method"] for row in benchmark_data]
-    returns = [row["Team Return"] for row in benchmark_data]
-    cis = [row["Return 95% CI"] for row in benchmark_data]
+    # Save to JSON
+    json_file = "results/experiment_4_benchmark.json"
+    with open(json_file, "w") as f:
+        json.dump(benchmark_data, f, indent=2)
 
-    colors = [
-        "#7f7f7f",  # Random
-        "#bcbd22",  # Greedy
-        "#d62728",  # Selfish Q
-        "#ff7f0e",  # Equal Share
-        "#1f77b4",  # DCOP DSA
-        "#17becf",  # DCOP Max-Sum
-        "#9467bd",  # Shapley Q
-        "#2ca02c",  # Centralized
+    # -------------------------------------------------------------
+    # Publication-Grade 2x2 Multi-Panel Figure
+    # -------------------------------------------------------------
+    os.makedirs("plots", exist_ok=True)
+    os.makedirs("media", exist_ok=True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(13.5, 9.5), dpi=300)
+    fig.patch.set_facecolor("#ffffff")
+
+    names = [row["Method"] for row in benchmark_data]
+    short_names = [
+        "Random", "Greedy", "Selfish Q", "Eq-Share",
+        "DCOP-DSA", "DCOP-MS", "Shapley Q", "Opt (π*)"
+    ]
+    bar_colors = [
+        "#94a3b8", "#64748b", "#ea580c", "#d97706",
+        "#0284c7", "#2563eb", "#10b981", "#059669"
     ]
 
-    fig, ax = plt.subplots(figsize=(10, 5.5), dpi=300)
-    bars = ax.barh(names, returns, xerr=cis, capsize=4, color=colors, alpha=0.88, edgecolor="black")
+    # Panel A: Team Return J(pi)
+    ax_a = axes[0, 0]
+    ax_a.set_facecolor("#f8fafc")
+    returns = [row["Team Return"] for row in benchmark_data]
+    ci_err = [row["Return 95% CI"] for row in benchmark_data]
+    ax_a.bar(short_names, returns, yerr=ci_err, color=bar_colors, capsize=4, edgecolor="#1e293b", linewidth=1)
+    ax_a.set_title("(a) Team Return $J(\pi)$ (Higher is Better)", fontsize=11.5, fontweight="bold", pad=8)
+    ax_a.set_ylabel("Expected Return", fontsize=10, fontweight="bold")
+    ax_a.grid(True, linestyle="--", linewidth=0.6, alpha=0.6, axis="y")
+    ax_a.tick_params(axis="x", rotation=25)
 
-    # Add data labels
-    for bar in bars:
-        width = bar.get_width()
-        offset = 4 if width >= 0 else -18
-        ax.text(
-            width + offset,
-            bar.get_y() + bar.get_height() / 2,
-            f"{width:.1f}",
-            va="center",
-            ha="left" if width >= 0 else "right",
-            fontsize=9.5,
-            fontweight="bold",
-        )
+    # Panel B: Price of Anarchy (PoA)
+    ax_b = axes[0, 1]
+    ax_b.set_facecolor("#f8fafc")
+    poas = [row["PoA"] for row in benchmark_data]
+    ax_b.bar(short_names, poas, color=bar_colors, edgecolor="#1e293b", linewidth=1)
+    ax_b.axhline(1.0, color="#16a34a", linestyle="--", linewidth=1.5, label="Ideal Optimum (PoA=1.0)")
+    ax_b.set_title("(b) Price of Anarchy $\mathrm{PoA} = J(\pi^\star) / J(\pi)$", fontsize=11.5, fontweight="bold", pad=8)
+    ax_b.set_ylabel("PoA (Closer to 1.0 is Better)", fontsize=10, fontweight="bold")
+    ax_b.grid(True, linestyle="--", linewidth=0.6, alpha=0.6, axis="y")
+    ax_b.tick_params(axis="x", rotation=25)
+    ax_b.legend(fontsize=9, loc="upper right")
 
-    ax.set_xlabel(r"Mean Team Return $J(\pi)$ (with 95% CI)", fontsize=12)
-    ax.set_title("Multi-Agent Pac-Man Benchmark: Method Comparison", fontsize=14, fontweight="bold", pad=12)
-    ax.grid(True, linestyle="--", alpha=0.5, axis="x")
+    # Panel C: Gap Recovered (%)
+    ax_c = axes[1, 0]
+    ax_c.set_facecolor("#f8fafc")
+    gaps = [row["Gap Recovered (%)"] for row in benchmark_data]
+    ax_c.bar(short_names, gaps, color=bar_colors, edgecolor="#1e293b", linewidth=1)
+    ax_c.axhline(100.0, color="#16a34a", linestyle="--", linewidth=1.5, label="100% Upper Bound")
+    ax_c.axhline(0.0, color="#64748b", linestyle=":", linewidth=1.5)
+    ax_c.set_title("(c) Fraction of Selfish Gap Recovered (%)", fontsize=11.5, fontweight="bold", pad=8)
+    ax_c.set_ylabel("Recovery Percentage", fontsize=10, fontweight="bold")
+    ax_c.grid(True, linestyle="--", linewidth=0.6, alpha=0.6, axis="y")
+    ax_c.tick_params(axis="x", rotation=25)
+    ax_c.legend(fontsize=9, loc="upper left")
+
+    # Panel D: Gini Index (Fairness)
+    ax_d = axes[1, 1]
+    ax_d.set_facecolor("#f8fafc")
+    ginis = [row["Gini Index"] for row in benchmark_data]
+    ax_d.bar(short_names, ginis, color=bar_colors, edgecolor="#1e293b", linewidth=1)
+    ax_d.set_title("(d) Reward Inequality (Gini Index, Lower is Fairer)", fontsize=11.5, fontweight="bold", pad=8)
+    ax_d.set_ylabel("Gini Coefficient (0 = Equality)", fontsize=10, fontweight="bold")
+    ax_d.grid(True, linestyle="--", linewidth=0.6, alpha=0.6, axis="y")
+    ax_d.tick_params(axis="x", rotation=25)
+
+    fig.suptitle(
+        "Comprehensive Multi-Agent Pac-Man Benchmark: Baselines vs. DCOP & Shapley Remedies",
+        fontsize=14, fontweight="bold", y=0.99, color="#0f172a"
+    )
     plt.tight_layout()
+    plt.subplots_adjust(top=0.93)
 
-    plot_path = "plots/fig_e4_method_comparison.png"
-    plt.savefig(plot_path)
+    out_plot = "plots/fig_e4_method_comparison.png"
+    out_media = "media/fig_e4_method_comparison.png"
+    plt.savefig(out_plot, dpi=300)
+    plt.savefig(out_media, dpi=300)
     plt.close()
-    print(f"Plot saved to {plot_path}")
+
+    print(f"\nMulti-panel plot saved to {out_plot} and {out_media}")
+    print(f"Benchmark CSV saved to {csv_file}")
     print("Experiment 4 Complete!\n")
     return benchmark_data
 

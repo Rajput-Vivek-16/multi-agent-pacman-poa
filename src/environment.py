@@ -67,6 +67,7 @@ class MultiAgentPacmanEnv:
         # Parse static structure
         self.walls: Set[Tuple[int, int]] = set()
         self.open_cells: Set[Tuple[int, int]] = set()
+        self.power_pellets: Set[Tuple[int, int]] = set()
         self.default_pacman_starts: List[Tuple[int, int]] = []
         self.default_ghost_starts: List[Tuple[int, int]] = []
         self.initial_pellet_set: Set[Tuple[int, int]] = set()
@@ -87,6 +88,23 @@ class MultiAgentPacmanEnv:
 
         self.reset(seed=seed)
 
+    def __deepcopy__(self, memo):
+        """High-performance custom deepcopy sharing static graph structure."""
+        import copy
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k in ("dist_matrix", "raw_grid", "walls", "open_cells", "power_pellets"):
+                setattr(result, k, v)  # Shared immutable static graph data
+            elif isinstance(v, list):
+                setattr(result, k, list(v))
+            elif isinstance(v, set):
+                setattr(result, k, set(v))
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
     def _parse_layout(self):
         for y, row in enumerate(self.raw_grid):
             for x, char in enumerate(row):
@@ -97,11 +115,18 @@ class MultiAgentPacmanEnv:
                     self.open_cells.add(pos)
                     if char == ".":
                         self.initial_pellet_set.add(pos)
+                    elif char == "o":
+                        self.initial_pellet_set.add(pos)
+                        self.power_pellets.add(pos)
                     elif char == "P":
                         self.default_pacman_starts.append(pos)
-                        # Starting cells also have pellets if appropriate
+                        self.initial_pellet_set.add(pos)
                     elif char == "G":
                         self.default_ghost_starts.append(pos)
+
+        # Sort starts consistently: Pac-Men left-to-right (Region A, B, C), Ghosts top-to-bottom
+        self.default_pacman_starts.sort(key=lambda p: (p[0], p[1]))
+        self.default_ghost_starts.sort(key=lambda g: (g[1], g[0]))
 
         # If not enough starts defined in layout, pick open cells
         available_open = sorted(list(self.open_cells))
