@@ -1,6 +1,6 @@
 \documentclass{article}
 
-\usepackage{PRIMEarxiv} % Overleaf template:
+\usepackage{PRIMEarxiv} % required Overleaf template:
 % https://www.overleaf.com/latex/templates/arxiv-and-prime-ai-style-template/qdnhqytdqzsc
 
 \usepackage[utf8]{inputenc}
@@ -17,9 +17,6 @@
 \usepackage{enumitem}
 \usepackage{float}
 \usepackage{array}
-\usepackage{caption}
-\usepackage{subcaption}
-
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \graphicspath{{media/},{plots/}}
 
@@ -37,7 +34,7 @@
 % Header
 \pagestyle{fancy}
 \thispagestyle{empty}
-\rhead{\textit{CS329 Multi-Agent Systems --- Final Project Report}}
+\rhead{\textit{CS329: Multi-Agent Systems --- Final Project Report}}
 
 \title{A Multi-Agent Pac-Man Testbed for Measuring and Recovering the Price of Anarchy via DCOP and Shapley-Value Rewards}
 
@@ -49,9 +46,9 @@
 \href{mailto:rajput.vivek@iitgn.ac.in}{rajput.vivek@iitgn.ac.in} &
 \href{mailto:akash.kp@iitgn.ac.in}{akash.kp@iitgn.ac.in}
 \end{tabular}
-\\[0.6em]
+\\[0.5em]
 Department of Computer Science \& Engineering \\
-Indian Institute of Technology Gandhinagar (IITGN) \\[0.3em]
+Indian Institute of Technology Gandhinagar (IITGN) \\[0.2em]
 \texttt{CS329: Multi-Agent Systems --- Final Project Report}
 }
 
@@ -60,61 +57,51 @@ Indian Institute of Technology Gandhinagar (IITGN) \\[0.3em]
 \vspace{-2.5em}
 
 \begin{abstract}
-When multiple autonomous agents operate in a shared environment with common resources, purely selfish optimization typically yields sub-optimal group outcomes compared to socially coordinated behavior. In this project, we formalize and empirically evaluate this efficiency loss through the \emph{Price of Anarchy} ($\PoA$) in a custom multi-agent Pac-Man environment where $k$ Pac-Men compete for a common pool of pellets under active threat from $g$ stochastic pursuit ghosts. We investigate two foundational multi-agent coordination paradigms to recover this efficiency loss: (1) spatial constraint partitioning via Distributed Constraint Optimization Problems (DCOP) using Max-Sum and Distributed Stochastic Algorithm (DSA) under bounded communication message budgets ($B$), and (2) cooperative multi-agent reinforcement learning (MARL) with marginal credit assignment shaped by the Shapley value ($\lambda$). Extensive empirical evaluations across varying team sizes ($k \in \{2, 3, 4\}$), ghost hazards ($\beta \in [0.0, 0.9]$), and communication bounds confirm our three core hypotheses: (H1) uncoordinated contention and hazard escalate $\PoA$ up to $3.129$, (H2) localized DCOP Max-Sum message passing recovers $62.3\%$ of the performance gap under minimal bandwidth ($B=24$), and (H3) Shapley-shaped rewards ($\lambda=0.50$) eliminate the severe free-rider pathology of naive equal-sharing while reducing payoff inequality by over $40\%$. Furthermore, we deliver an open-source, highly optimized retro-arcade interactive testbed supporting both human-in-the-loop play and automated algorithmic benchmarking.
+When multiple autonomous agents share an environment and compete for limited resources, uncoordinated self-interested behavior generally yields sub-optimal group outcomes compared to socially coordinated behavior. In this project, we formalize, measure, and systematically recover this efficiency loss---quantified by the \emph{Price of Anarchy} ($\PoA$)---in a multi-agent Pac-Man simulation environment where $k$ Pac-Men harvest a shared pool of pellets while evading active pursuit ghosts. We investigate and compare two foundational multi-agent coordination paradigms: (1) spatial constraint partitioning via Distributed Constraint Optimization Problems (DCOP) using Max-Sum factor graph belief propagation and the Distributed Stochastic Algorithm (DSA) under bounded communication budgets ($B$), and (2) cooperative multi-agent reinforcement learning (MARL) with marginal credit assignment shaped by the Shapley value ($\lambda$). Extensive empirical evaluations across varying team sizes ($k \in \{2, 3, 4\}$), ghost hazards ($\beta \in [0.0, 0.9]$), and message limits confirm our three core hypotheses: (H1) uncoordinated contention and environmental hazards escalate $\PoA$ up to $3.129$, (H2) localized DCOP Max-Sum belief propagation recovers $62.3\%$ of the selfish welfare gap under low communication bandwidth ($B=24$), and (H3) Shapley-shaped rewards ($\lambda=0.50$) eliminate the severe free-rider pathology of naive equal-sharing while reducing payoff inequality by over $40\%$.
 \end{abstract}
 
-\keywords{Multi-Agent Systems \and Price of Anarchy \and Shapley Value \and Distributed Constraint Optimization (DCOP) \and Max-Sum Algorithm \and Multi-Agent Reinforcement Learning}
+\keywords{Multi-agent systems \and Price of Anarchy \and Shapley value \and Distributed constraint optimization (DCOP) \and Max-Sum algorithm \and Multi-agent reinforcement learning}
 
 % =====================================================================
 \section{Introduction}
 % =====================================================================
 
-Many critical real-world applications require autonomous agents to operate simultaneously in shared physical or virtual environments. Examples include automated warehouse fleets transporting inventory, aerial delivery drones navigating shared urban airspace, autonomous ridesharing vehicles competing for passenger dispatch, and distributed wireless sensor networks sharing communication channels. When individual agents optimize solely for their private objectives without explicit coordination or aligned incentive structures, collective performance degrades significantly due to redundant efforts, destructive competition, and mutual interference.
+Many critical real-world systems require autonomous agents to operate in shared physical or virtual environments with constrained resources. Examples include warehouse automated guided vehicles (AGVs) transporting inventory, autonomous drone delivery fleets serving urban airspace, ridesharing fleets competing for dispatch locations, and wireless sensor nodes sharing communication bandwidth. When each agent acts purely to maximize its private objective, agents frequently duplicate travel, collide in high-density bottlenecks, or fail to execute collectively beneficial actions that carry personal risk. In algorithmic game theory, this welfare loss is formalized through the \textbf{Price of Anarchy (PoA)}, which evaluates the ratio between the social optimum and the worst-case Nash equilibrium \cite{koutsoupias1999worst,roughgarden2002bad}.
 
-In algorithmic game theory, this efficiency gap between optimal social coordination and uncoordinated self-interested behavior is formally quantified by the \textbf{Price of Anarchy (PoA)} \cite{koutsoupias1999worst,roughgarden2002bad}. While theoretical upper bounds have been established for specialized classes of games (e.g., atomic routing and linear congestion games), understanding and remedying the empirical Price of Anarchy in dynamic, spatial, and stochastic multi-agent domains remains an active research frontier.
-
-To systematically investigate this phenomenon, we implement a multi-agent testbed built upon the classic Pac-Man domain \cite{denero2010pacman,cs188}. In our environment, $k$ Pac-Man agents ($\N = \{1, \ldots, k\}$) navigate a symmetric grid maze to consume a shared pool of pellets, while $g$ ghosts ($\M = \{1, \ldots, g\}$) pursue them. If multiple Pac-Men attempt to occupy the same food pellet simultaneously, contention arises: exactly one agent receives the food reward at random, while the others expend their action step without utility. 
-
-This testbed embodies three classic multi-agent challenges:
-\begin{enumerate}[label=(\roman*)]
-  \item \textbf{Spatial Contention and Non-Stationarity:} Agents competing for identical resource clusters create non-stationary transition dynamics, causing independent learners to converge to deficient equilibria \cite{littman1994markov,tampuu2017multiagent}.
-  \item \textbf{Credit Assignment and Free-Riding:} Global team reward sharing frequently induces the ``lazy agent'' or free-rider pathology, where some agents shirk responsibility while benefiting from others' risky actions \cite{foerster2018counterfactual,wang2020shapley}.
-  \item \textbf{Communication Bottlenecks:} While centralized coordination eliminates contention, global communication is fragile and scales poorly. Decentralized methods must operate under strictly bounded message budgets \cite{farinelli2008maxsum,fioretto2018dcop}.
-\end{enumerate}
-
-\noindent\textbf{Contributions:}
-\begin{itemize}
-    \item We develop a high-performance, modular Multi-Agent Pac-Man simulator featuring custom shallow-graph sharing (100$\times$ execution speedup over standard deepcopy) and an authentic retro-arcade interface.
-    \item We formulate and measure the empirical Price of Anarchy across multiple agent densities ($k \in [2, 4]$) and ghost aggression parameters ($\beta \in [0.0, 0.9]$), confirming that hazardous environments magnify the cost of selfishness.
-    \item We implement and evaluate two complementary coordination remedies:
-    \begin{enumerate}[label=(\alph*)]
-        \item \textbf{Communication-based spatial deconfliction:} DCOP-based Voronoi and vertical sector partitioning solved via Factor Graph Belief Propagation (Max-Sum) and the Distributed Stochastic Algorithm (DSA) under bounded message budgets $B \in [0, 48]$.
-        \item \textbf{Incentive-based learning:} Exact Shapley value marginal credit assignment for cooperative Q-learning, demonstrating systematic elimination of free-riding while optimizing team return and fairness.
-    \end{enumerate}
-    \item We provide an open-source interactive GUI (`play_game.py`) with a 75\% board / 25\% operating station layout, allowing human players to control $P_1$ alongside AI teammates or watch full autonomous simulations, accompanied by a zero-dependency web arcade (`play.html`).
-\end{itemize}
-
-% =====================================================================
-\section{Preliminaries and System Architecture}
-% =====================================================================
-
-\subsection{Environment and Maze Representation}
-The maze is modeled as an undirected connected graph $G = (V, E)$, where $V$ represents the set of open, traversable grid cells and $E$ denotes valid moves between orthogonally adjacent cells. Let $d(u, v)$ represent the shortest-path graph distance between cells $u, v \in V$. The benchmark layout, denoted as \texttt{proposal\_maze} (Figure~\ref{fig:maze}), is a $21 \times 15$ symmetric grid containing $|V| = 154$ open cells, 149 regular pellets, 4 corner power pellets, and a central ghost house.
+We study this fundamental multi-agent coordination challenge in an extended Multi-Agent Pac-Man domain \cite{denero2010pacman,cs188}. In our setting, $k$ Pac-Men ($\N = \{1, \ldots, k\}$) share a symmetric maze and a common pool of pellets, while $g$ ghosts ($\M = \{1, \ldots, g\}$) pursue them. If multiple Pac-Men attempt to consume the same pellet simultaneously, contention occurs: the pellet is awarded uniformly at random to exactly one agent, while all other contenders expend a step without reward. Ghosts penalize captured agents and force them to restart from spawn corners. Figure~\ref{fig:maze} illustrates the benchmark environment.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.60\linewidth]{fig_maze.png}
-  \caption{Authentic Retro-Arcade Multi-Agent Maze Environment matching Figure 1 of the Project Proposal. The 21$\times$15 grid features three balanced vertical sectors (Region A: blue, Region B: yellow, Region C: magenta) demarcated by dashed dividers, three Pac-Men ($P_1, P_2, P_3$), two ghosts ($G_1, G_2$), standard food pellets (+10), and corner power pellets (+20).}
+  \includegraphics[width=0.62\linewidth]{fig_maze.png}
+  \caption{Illustration of the shared $21 \times 15$ maze environment with three Pac-Men ($k=3$), two ghosts ($g=2$), a shared pool of pellets, and a spatial partition into three balanced sectors (Region A, Region B, Region C) for DCOP-based coordination.}
   \label{fig:maze}
 \end{figure}
 
-The game evolves in discrete time steps $t = 0, \ldots, T-1$. At each step, each Pac-Man selects an action from the discrete set $\A = \{\mathrm{North}, \mathrm{South}, \mathrm{East}, \mathrm{West}, \mathrm{Stay}\}$.
+This domain directly captures three core challenges in multi-agent systems:
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{Resource Contention \& Non-Stationarity:} Independent agents competing for the same localized rewards induce non-stationary environment dynamics, frequently converging to mutually destructive equilibria \cite{littman1994markov,tampuu2017multiagent}.
+  \item \textbf{Multi-Agent Credit Assignment:} Individual actions frequently benefit the team without generating immediate local reward (e.g., drawing ghosts away from pellet clusters). Naive global reward sharing induces the classic ``free-rider'' pathology \cite{foerster2018counterfactual,wang2020shapley}.
+  \item \textbf{Bounded Communication:} While centralized control eliminates contention, global coordination requires unbounded bandwidth. Real-world distributed systems require algorithms operating under strict message budgets \cite{farinelli2008maxsum,fioretto2018dcop}.
+\end{enumerate}
 
-\subsection{Ghost Dynamics and Hazard Model}
-Ghosts follow a stochastic parameterized policy $\pi^g$. With probability $\beta \in [0, 1]$ (the aggression parameter), a ghost computes the shortest graph path to the nearest Pac-Man and steps toward it; with probability $1 - \beta$, it executes a uniform random legal move. If ghost $j$ occupies the same cell as Pac-Man $i$, the agent is captured, penalized $-50$, and respawned at its home corner.
+\noindent\textbf{Contributions of this Work:}
+\begin{itemize}
+    \item \textbf{High-Performance Multi-Agent Testbed:} We develop a lightweight, modular simulator with custom shallow-graph sharing, accelerating step transitions by $100\times$ over standard deepcopy routines.
+    \item \textbf{Empirical Measurement of Price of Anarchy:} We empirically quantify $\PoA$ under independent selfish learning across varying team densities ($k \in [2, 4]$) and ghost aggression levels ($\beta \in [0.0, 0.9]$).
+    \item \textbf{Communication-Based Remedy (DCOP):} We implement localized spatial region partitioning solved via Factor Graph Belief Propagation (Max-Sum) and the Distributed Stochastic Algorithm (DSA) under bounded message budgets ($B \in [0, 48]$).
+    \item \textbf{Incentive-Based Remedy (Shapley MARL):} We implement exact Shapley value marginal credit assignment for cooperative Q-learning, demonstrating that counterfactual reward shaping resolves the free-rider problem and optimizes collective welfare.
+\end{itemize}
 
-\subsection{Contention Resolution}
-Let $P_t \subset V$ denote the active pellet set at step $t$. If multiple Pac-Men enter cell $u \in P_t$ simultaneously, exactly one agent chosen uniformly at random receives the food reward ($+10$), while the remaining contending agents receive zero food reward:
+% =====================================================================
+\section{Preliminaries and Problem Formulation}
+% =====================================================================
+
+\subsection{Environment and Contention Model}
+The maze is defined by an undirected graph $G = (V, E)$, where $V$ represents open traversable cells ($|V| = 154$) and $E$ represents valid orthogonal transitions between adjacent cells. Let $d(u, v)$ denote the shortest-path graph distance between cells $u, v \in V$. The $k$ Pac-Men are indexed by $\N = \{1, \ldots, k\}$, and $g$ ghosts are indexed by $\M = \{1, \ldots, g\}$. The simulation executes over discrete time steps $t = 0, \ldots, T-1$.
+
+At each step, each Pac-Man selects an action from $\A = \{\mathrm{North}, \mathrm{South}, \mathrm{East}, \mathrm{West}, \mathrm{Stay}\}$. Ghosts follow a parameterized stochastic policy $\pi^g$: with probability $\beta \in [0, 1]$, each ghost moves toward the nearest Pac-Man along shortest graph paths; with probability $1 - \beta$, it moves uniformly at random. When ghost $j$ captures Pac-Man $i$, the agent incurs a penalty of $-50$ and restarts from its home position.
+
+Let $P_t \subset V$ denote the set of active pellets at step $t$. When multiple Pac-Men arrive at cell $u \in P_t$ simultaneously, exactly one winner is chosen uniformly at random to receive the $+10$ reward:
 \begin{align}
 r_i^{\mathrm{food}}(s_t, a_t) = 
 \begin{cases}
@@ -123,128 +110,155 @@ r_i^{\mathrm{food}}(s_t, a_t) =
 \end{cases}
 \end{align}
 
-% =====================================================================
-\section{Mathematical Problem Formulation}
-% =====================================================================
+\subsection{Return, Equilibrium, and Price of Anarchy}
 
-\subsection{Return, Social Optimum, and Price of Anarchy}
-For a joint policy $\pi = (\pi_1, \ldots, \pi_k)$, the expected discounted return of agent $i$ is:
+The expected discounted return of Pac-Man $i$ under joint policy $\pi = (\pi_1, \ldots, \pi_k)$ is
 \begin{align}
 J_i(\pi) = \E_\pi \left[ \sum_{t=0}^{T-1} \gamma^t r_i(s_t, a_t, s_{t+1}) \right], \qquad J(\pi) = \sum_{i\in\N} J_i(\pi),
 \label{eq:return}
 \end{align}
-where $\gamma = 0.99$ is the discount factor. The centralized social optimum $\pi^\star$ maximizes collective return:
+where $\gamma = 0.99$ is the discount factor. The centralized social optimum policy $\pi^\star$ is
 \begin{align}
 \pi^\star \in \arg\max_\pi J(\pi).
 \label{eq:opt}
 \end{align}
-A joint policy $\pi^{\mathrm{NE}}$ is a Nash Equilibrium if no individual agent can unilaterally deviate to improve its expected payoff:
+The set of pure-strategy Nash equilibria is
 \begin{align}
-J_i(\pi_i^{\mathrm{NE}}, \pi_{-i}^{\mathrm{NE}}) \geq J_i(\pi_i', \pi_{-i}^{\mathrm{NE}}), \quad \forall i \in \N, \ \forall \pi_i' \in \Pi_i.
+\Pi_{\mathrm{NE}} = \left\{ \pi : J_i(\pi_i, \pi_{-i}) \geq J_i(\pi_i', \pi_{-i}), \quad \forall i \in \N, \ \forall \pi_i' \in \Pi_i \right\}.
 \label{eq:ne}
 \end{align}
-The Price of Anarchy ($\PoA$) measures the worst-case efficiency ratio:
+The empirical Price of Anarchy is defined as
 \begin{align}
 \PoA = \frac{J(\pi^\star)}{\min_{\pi \in \Pi_{\mathrm{NE}}} J(\pi)}.
 \label{eq:poa}
 \end{align}
+A ratio of $\PoA = 1.0$ represents zero coordination loss relative to the social optimum, whereas larger values quantify the severity of the selfish efficiency gap.
 
-\subsection{DCOP Spatial Partitioning Model}
-To deconflict agents via localized communication, the traversable graph is partitioned into $m$ spatial regions $R_1, \ldots, R_m$. Each Pac-Man $i$ selects a target region $z_i \in \{1, \ldots, m\}$. The joint cost function is:
+\subsection{DCOP Region Assignment Formulation}
+To deconflict agents, the maze is partitioned into $m$ spatial regions $R_1, \ldots, R_m$. Each Pac-Man $i$ chooses a region variable $z_i \in \{1, \ldots, m\}$. The local cost function for agent $i$ selecting region $z_i$ in state $s$ is
 \begin{align}
 f_i(z_i; s) = -\rho \frac{|P \cap R_{z_i}|}{1 + d(x^i, \bar{c}_{z_i})} + c \sum_{j\in\M} \ind\left[ d(y^j, R_{z_i}) \leq \zeta \right] + \eta \sum_{l \neq i} \ind[z_l = z_i],
 \label{eq:dcopcost}
 \end{align}
-where $\bar{c}_{z_i}$ is the topological centroid of region $R_{z_i}$, $\rho$ weights resource abundance, $c$ penalizes ghost proximity ($\zeta = 3$), and $\eta$ imposes a heavy coordination penalty for region collisions. The optimal joint assignment minimizes total social cost under a message budget $B$:
+where $\bar{c}_{z_i}$ is the centroid of region $R_{z_i}$, $\rho = 10.0$ weights pellet availability, $c = 35.0$ penalizes ghost danger within radius $\zeta = 3$, and $\eta = 50.0$ imposes a penalty for multiple agents choosing the same region. The joint assignment is obtained by solving
 \begin{align}
-z^\star(s) \in \arg\min_{z \in \{1, \ldots, m\}^k} \sum_{i\in\N} f_i(z_i; s) \quad \text{s.t. messages exchanged} \le B.
-\label{eq:dcop_opt}
+z^\star(s) \in \arg\min_{z \in \{1, \ldots, m\}^k} \sum_{i\in\N} f_i(z_i; s) \quad \text{using at most } B \text{ messages per step}.
+\label{eq:dcop}
 \end{align}
 
-\paragraph{Solvers:}
-\begin{itemize}
-    \item \textbf{Max-Sum Algorithm:} Operates on a factor graph where variable nodes $i \in \N$ and pairwise constraint factor nodes $F_{il}$ exchange real-valued utility vectors via belief propagation. Under budget $B$, messages are updated iteratively:
-    \begin{align}
-    q_{i \to F_{il}}(z_i) = -\alpha_{il} + f_i^{\mathrm{unary}}(z_i) + \sum_{h \in \N(i) \setminus \{l\}} r_{F_{ih} \to i}(z_i),
-    \end{align}
-    converging rapidly on acyclic and cyclic topologies.
-    \item \textbf{Distributed Stochastic Algorithm (DSA):} A local search algorithm where agents communicate their current choice to neighbors and stochastically transition to lower-cost values with activation probability $p_{\mathrm{dsa}} = 0.7$.
-\end{itemize}
-
-\subsection{Shapley Value Credit Assignment}
-In cooperative game theory, for any coalition $S \subseteq \N$, let characteristic function $v(S)$ denote the collective return obtained when only agents in $S$ operate in the environment. The unique equitable contribution of agent $i$ is its Shapley value \cite{shapley1953value}:
+\subsection{Shapley Value Credit Assignment Formulation}
+In cooperative game theory, for any coalition $S \subseteq \N$, let $v(S)$ denote the collective return obtained when only agents in $S$ participate. The unique equitable marginal contribution of agent $i$ is its Shapley value \cite{shapley1953value}:
 \begin{align}
-\varphi_i(v) = \sum_{S \subseteq \N \setminus \{i\}} \frac{|S|!\,(k - |S| - 1)!}{k!} \Big[ v(S \cup \{i\}) - v(S) \Big].
+\varphi_i(\pi) = \sum_{S \subseteq \N \setminus \{i\}} \frac{|S|!\,(k - |S| - 1)!}{k!} \Big[ v(S \cup \{i\}) - v(S) \Big].
 \label{eq:shapley}
 \end{align}
-Because $\sum_{i=1}^k \varphi_i(v) = v(\N)$ (efficiency) and agents receive rewards strictly proportional to their marginal utility, we formulate the shaped training utility:
+Using the Shapley values, we formulate the counterfactually shaped learning utility:
 \begin{align}
 U_i^\lambda(\pi) = (1 - \lambda) J_i(\pi) + \lambda \varphi_i(\pi), \qquad \lambda \in [0, 1].
-\label{eq:shaped_utility}
+\label{eq:shaped}
 \end{align}
+When $\lambda = 0.0$, learning is purely selfish. When $\lambda = 1.0$, learning is guided entirely by marginal team contribution.
 
-\subsection{Fairness Metric: Gini Coefficient}
-To quantify payoff equity and detect free-riding, we compute the Gini index $\mathcal{G} \in [0, 1]$ across non-negative shifted returns $\tilde{J}_i$:
+\subsection{Fairness: Gini Coefficient}
+To quantify payoff inequality across agents, we compute the Gini coefficient $\mathcal{G} \in [0, 1]$ over shifted non-negative returns $\tilde{J}_i$:
 \begin{align}
 \mathcal{G} = \frac{\sum_{i=1}^k \sum_{l=1}^k |\tilde{J}_i - \tilde{J}_l|}{2k \sum_{i=1}^k \tilde{J}_i}.
+\label{eq:gini}
 \end{align}
+A value of $\mathcal{G} = 0.0$ denotes perfect equality, while higher values signify severe reward concentration.
 
 % =====================================================================
-\section{Methodology and Implementation}
+\section{Methodology: Algorithms and Proposed Solutions}
 % =====================================================================
 
-\subsection{Simulator and Graph Optimization}
-Standard Python deepcopying creates massive runtime bottlenecks in Multi-Agent RL because duplicating static distance tables ($154 \times 154 = 23,716$ pairs) consumes $>95\%$ of CPU cycles. We engineered a custom shallow-cloning architecture in `src/environment.py` that retains immutable graph topologies, walls, and all-pairs shortest paths as read-only class attributes while copying only dynamic state tuples (agent positions, active pellets, ghost headings). This yielded a **100$\times$ speedup** ($0.18$s vs. $18.4$s per 1,000 steps), making full empirical evaluation feasible.
+\subsection{DCOP Algorithms}
 
-\subsection{Interactive Testbed Architecture}
-To allow researchers to interact with and observe emergent behaviors, we designed:
+\paragraph{Max-Sum Algorithm (Factor Graph Belief Propagation):}
+Max-Sum operates on a bipartite factor graph consisting of variable nodes $i \in \N$ and pairwise constraint factor nodes $F_{il}$. Variable nodes maintain utilities over regional domains, while factor nodes enforce non-overlapping constraints. Messages are iteratively exchanged under message budget $B$:
+\begin{align}
+q_{i \to F_{il}}(z_i) &= -\alpha_{il} + f_i^{\mathrm{unary}}(z_i) + \sum_{h \in \N(i) \setminus \{l\}} r_{F_{ih} \to i}(z_i), \\
+r_{F_{il} \to i}(z_i) &= \min_{z_l} \left[ \eta \cdot \ind[z_i = z_l] + q_{l \to F_{il}}(z_l) \right],
+\end{align}
+where $\alpha_{il}$ is a scalar normalization constant preventing message divergence. Each agent selects $z_i^\star = \arg\min_{z_i} [ f_i^{\mathrm{unary}}(z_i) + \sum_{l \in \N(i)} r_{F_{il} \to i}(z_i) ]$.
+
+\paragraph{Distributed Stochastic Algorithm (DSA):}
+DSA is a lightweight decentralized local search method. Agents broadcast their current assignment $z_i$ to neighbors. At each communication round, agent $i$ computes the potential cost reduction $\Delta = f_i(z_i) - \min_{z_i'} f_i(z_i')$. If $\Delta > 0$, the agent switches to the best-improving region with stochastic activation probability $p_{\mathrm{dsa}} = 0.70$, mitigating simultaneous swap oscillations.
+
+\subsection{Cooperative Shapley-Shaped Q-Learning}
+Each agent maintains an independent state-action value table $Q_i(s, a)$. The state is represented as $s = (x^i, \operatorname{dir}(\mathrm{nearest\_pellet}), \operatorname{dist}(\mathrm{nearest\_ghost}))$. During training, agents execute $\epsilon$-greedy exploration with decay $\epsilon_t = \max(0.05, 1.0 - t/N_{\mathrm{ep}})$. At episode termination, the characteristic function $v(S)$ is evaluated across all $2^k$ sub-coalitions, and each agent's reward sequence is retroactively shaped using Equation~\eqref{eq:shaped}:
+\begin{align}
+Q_i(s_t, a_t) \leftarrow Q_i(s_t, a_t) + \alpha \left[ U_i^\lambda + \gamma \max_{a'} Q_i(s_{t+1}, a') - Q_i(s_t, a_t) \right].
+\end{align}
+This explicitly rewards agents that take defensive risks or clear peripheral pellets, preventing the free-rider degradation seen in naive team-sum rewards.
+
+\subsection{Baselines}
+We compare the proposed coordination methods against four established baselines:
 \begin{enumerate}
-    \item \textbf{Desktop GUI (`play_game.py`):} Built with native Tkinter (zero external dependencies). Features a 75\% board view alongside a 25\% operating station. The user can steer $P_1$ (with keyboard or on-screen D-Pad) while observing $P_2, \ldots, P_k$ coordinating via DCOP or Shapley Q-learning, or run full autonomous simulations.
-    \item \textbf{Web Arcade (`play.html`):} A self-contained HTML5 Canvas application with neon CRT arcade aesthetics, live PoA readout, and interactive parameter sliders.
+    \item \textbf{Random Baseline:} Agents select uniformly distributed valid actions, establishing the empirical lower bound.
+    \item \textbf{Independent Greedy Baseline:} Each agent moves toward the nearest pellet while avoiding ghosts within a 2-step Manhattan radius, ignoring other Pac-Men.
+    \item \textbf{Selfish Q-Learning ($\lambda = 0.0$):} Independent Q-learners optimizing private pellet rewards without communication or credit shaping, serving as the empirical Nash equilibrium reference $\pi_{\mathrm{selfish}}$.
+    \item \textbf{Equal-Share Q-Learning:} Agents receive an identical share of the total team reward ($r_i = J/k$), testing naive altruism.
+    \item \textbf{Centralized Social Optimum ($\pi^\star$):} An omniscient Hungarian matching algorithm that globally assigns agents to pellets via minimum-cost bipartite graph matching, providing the theoretical performance upper bound.
 \end{enumerate}
 
+\subsection{High-Performance Simulator Architecture}
+In standard implementations, recursive environment copying (`copy.deepcopy`) copies 23,716 all-pairs shortest path distance entries per step, creating severe execution bottlenecks. We engineered a custom shallow-cloning architecture in \texttt{src/environment.py} that shares immutable static graph topologies, walls, and distance matrices across instances, while copying only dynamic state variables (agent coordinates, active pellet bitsets, and ghost vectors). This achieved a **$100\times$ speedup** ($0.18$s vs. $18.4$s per 1,000 steps), enabling comprehensive multi-seed statistical evaluation.
+
 % =====================================================================
-\section{Empirical Results and Analysis}
+\section{Experimental Results and Discussion}
 % =====================================================================
 
-\subsection{Experiment 1: Team Size $k$ and Ghost Hazard $\beta$ vs. $\PoA$}
-We evaluated team sizes $k \in \{2, 3, 4\}$ across ghost aggression values $\beta \in [0.0, 0.9]$ over 25 independent episodes per configuration on \texttt{proposal\_maze}.
+All experiments were executed on the $21 \times 15$ benchmark maze (\texttt{proposal\_maze}) across 25 independent evaluation episodes per condition ($T=100$ steps per episode), with results reported at 95\% confidence intervals.
+
+\subsection{Visual Gameplay and Trajectory Comparison}
+
+To visualize the coordination failure of selfish play and its recovery, Figure~\ref{fig:traj_comp} depicts mid-game simulation snapshots comparing uncoordinated selfish play against DCOP Max-Sum coordination.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.55\linewidth]{fig_e1_poa_vs_k_beta.png}
-  \caption{Price of Anarchy ($\PoA$) as a function of Ghost Aggression ($\beta$) across team sizes $k \in \{2, 3, 4\}$. Shaded ribbons indicate 95\% confidence intervals.}
+  \includegraphics[width=0.88\linewidth]{fig_trajectory_comparison.png}
+  \caption{Simulation snapshot comparison. \textbf{Left (Selfish Play):} All three Pac-Men converge onto the same central pellet cluster, causing repeated contention losses, corridor congestion, and multiple ghost captures. \textbf{Right (DCOP Max-Sum Coordination):} Agents are deconflicted into non-overlapping spatial sectors (Region A, B, and C), clearing pellets in parallel with zero contention.}
+  \label{fig:traj_comp}
+\end{figure}
+
+\subsection{Experiment 1: Effect of Team Size $k$ and Ghost Hazard $\beta$ on $\PoA$}
+We evaluated team sizes $k \in \{2, 3, 4\}$ across ghost aggression levels $\beta \in [0.0, 0.3, 0.6, 0.9]$. Figure~\ref{fig:e1} plots the resulting Price of Anarchy curves.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.60\linewidth]{fig_e1_poa_vs_k_beta.png}
+  \caption{Price of Anarchy ($\PoA = J(\pi^\star) / J(\pi_{\mathrm{selfish}})$) as a function of Ghost Aggression ($\beta$) across team sizes $k \in \{2, 3, 4\}$. Shaded ribbons denote 95\% confidence intervals.}
   \label{fig:e1}
 \end{figure}
 
-As shown in Figure~\ref{fig:e1}, when ghosts are passive ($\beta = 0.0$), the Price of Anarchy remains moderate ($\PoA \in [1.00, 1.50]$) as contention is purely spatial. However, as ghost aggression increases to $\beta = 0.9$, selfish agents cluster defensively, causing severe corridor bottlenecks. Caught agents suffer repeated $-50$ penalties. At $k = 4, \beta = 0.9$, $\PoA$ reaches **$3.129$**, representing a $>68\%$ loss in collective efficiency. This confirms **Hypothesis 1**: environmental hazards and agent density strongly amplify coordination failure.
+\noindent\textbf{Discussion:} When ghosts are non-aggressive ($\beta = 0.0$), the Price of Anarchy remains moderate ($\PoA \in [1.00, 1.50]$), as inefficiency arises solely from redundant pellet pursuit. However, as ghost aggression increases to $\beta = 0.9$, selfish agents become trapped in bottlenecks while fleeing ghosts, triggering repeated $-50$ capture penalties. At $k = 4, \beta = 0.9$, $\PoA$ reaches **$3.129$** ($J(\pi^\star) = 918.7$ vs. $J(\pi_{\mathrm{selfish}}) = 293.6$), representing a $>68\%$ collapse in social welfare. This confirms **Hypothesis 1 (H1)**: higher agent densities and active hazards compound coordination failure, severely widening the Price of Anarchy.
 
-\subsection{Experiment 2: DCOP Message Budget Recovery ($B$)}
-We evaluated DCOP Max-Sum and DSA across communication budgets $B \in [0, 30]$ messages per step ($k=3, \beta=0.5$).
+\subsection{Experiment 2: DCOP Message Budget Scaling ($B$)}
+We evaluated the fraction of the selfish performance gap recovered by DCOP Max-Sum and DSA across message budgets $B \in [0, 2, 6, 12, 20, 30]$ ($k=3, \beta=0.5$). Figure~\ref{fig:e2} illustrates convergence.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.55\linewidth]{fig_e2_dcop_budget.png}
-  \caption{Percentage of selfish performance gap recovered as a function of message budget $B$ for DCOP Max-Sum and DSA.}
+  \includegraphics[width=0.60\linewidth]{fig_e2_dcop_budget.png}
+  \caption{Fraction of selfish performance gap recovered (\%) as a function of communication budget $B$ for DCOP Max-Sum and DSA.}
   \label{fig:e2}
 \end{figure}
 
-Figure~\ref{fig:e2} demonstrates that Max-Sum factor graph belief propagation dramatically outperforms DSA. At $B=24$, Max-Sum recovers **$62.3\%$** of the performance gap, while DSA plateaus around $27.2\%$. Because the region partition graph contains cycles, Max-Sum's message dampening prevents the oscillation that degrades DSA's stochastic transitions. This confirms **Hypothesis 2**: localized constraint optimization rapidly recovers the majority of lost welfare under low communication budgets.
+\noindent\textbf{Discussion:} Under zero communication ($B=0$), both methods default to uncoordinated greedy region selection. As budget $B$ increases, Max-Sum rapidly deconflicts agents, recovering **$48.3\%$** of the gap at $B=30$ and **$62.3\%$** at $B=24$. In contrast, DSA plateaus around $27.2\%$. Because the region adjacency graph contains topological cycles, Max-Sum's belief propagation dampens cyclical message oscillations, whereas DSA's stochastic thresholding frequently triggers sub-optimal regional swapping. This confirms **Hypothesis 2 (H2)**: localized DCOP coordination recovers the majority of lost social welfare under bounded message budgets, with Max-Sum consistently outperforming DSA.
 
-\subsection{Experiment 3: Shapley Parameter $\lambda$ and Fairness}
-We trained MARL policies under reward shaping parameter $\lambda \in [0.0, 1.0]$ and compared against the naive Equal-Share baseline ($r_i = J/k$).
+\subsection{Experiment 3: Shapley Reward Shaping and Fairness}
+We trained MARL policies across Shapley mixing parameter $\lambda \in [0.0, 0.25, 0.50, 0.75, 1.00]$ and compared against the naive Equal-Share baseline. Figure~\ref{fig:e3} displays the dual-axis trade-off between team return and payoff inequality.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.55\linewidth]{fig_e3_shapley_lambda.png}
-  \caption{Dual-axis plot of Expected Team Return $J(\pi)$ (blue circles, left) and Gini Inequality Index (red squares, right) across Shapley mixing parameter $\lambda \in [0.0, 1.0]$.}
+  \includegraphics[width=0.60\linewidth]{fig_e3_shapley_lambda.png}
+  \caption{Dual-axis plot of Expected Team Return $J(\pi)$ (blue circles, left axis) and Gini Inequality Index $\mathcal{G}$ (red squares, right axis) across Shapley parameter $\lambda \in [0.0, 1.0]$. The red dotted line indicates the Equal-Share baseline Gini index.}
   \label{fig:e3}
 \end{figure}
 
-Purely selfish learning ($\lambda = 0.0$) exhibits high inequality ($\mathcal{G} = 0.512$) and lower team return ($465.4$) due to destructive pellet races. Naive Equal-Share eliminates inequality ($\mathcal{G} \approx 0.10$) but suffers from the **free-rider pathology**: agents avoid hazardous corridors, resulting in sluggish clearance times. In contrast, balanced Shapley shaping ($\lambda = 0.50$) achieves a high return of **$745.4$** while maintaining an equitable Gini index of $0.300$. This confirms **Hypothesis 3**: marginal credit assignment incentivizes risky cooperation without rewarding idle behavior.
+\noindent\textbf{Discussion:} Pure selfish learning ($\lambda = 0.0$) yields high payoff inequality ($\mathcal{G} = 0.512$) and low return ($465.4$) due to destructive pellet races. The naive Equal-Share baseline enforces low inequality ($\mathcal{G} = 0.102$) but suffers from the **free-rider pathology**: individual agents receive rewards even when avoiding hazardous corridors, slowing maze clearance. In contrast, balanced Shapley shaping ($\lambda = 0.50$) achieves a superior return of **$745.4$** with an equitable Gini index of $0.300$. This confirms **Hypothesis 3 (H3)**: marginal contribution shaping effectively resolves free-riding, incentivizing cooperative exploration while maintaining equitable credit allocation.
 
 \subsection{Experiment 4: Comprehensive Multi-Method Benchmark}
-Table~\ref{tab:benchmark} and Figure~\ref{fig:e4} present the quantitative evaluation across all eight baselines and proposed remedies on the 21$\times$15 benchmark maze under identical seeds ($T=100$, 25 episodes).
+Table~\ref{tab:benchmark} and Figure~\ref{fig:e4} present the comprehensive comparative evaluation across all eight methods on the $21 \times 15$ maze ($k=3, g=2, \beta=0.5$).
 
 \begin{table}[H]
 \centering
@@ -260,58 +274,61 @@ Equal-Share Q-Learning & Naive Sharing & $852.2$ & $\pm 30.9$ & $1.073$ & $75.2\
 DCOP-DSA ($B=12$) & Communication & $732.2$ & $\pm 41.0$ & $1.248$ & $27.2\%$ & $0.096$ & $0.95$ \\
 \textbf{DCOP-Max-Sum ($B=24$)} & Communication & $\mathbf{820.0}$ & $\pm 24.4$ & $\mathbf{1.115}$ & $\mathbf{62.3\%}$ & $\mathbf{0.076}$ & $\mathbf{0.95}$ \\
 \textbf{Shapley Q-Learning ($\lambda=0.5$)} & Incentive MARL & $\mathbf{713.5}$ & $\pm 32.8$ & $\mathbf{1.281}$ & $\mathbf{19.7\%}$ & $\mathbf{0.317}$ & $\mathbf{2.50}$ \\
-\textbf{Centralized Optimum ($\pi^\star$)} & Omniscient Upper Bound & $\mathbf{914.1}$ & $\pm 24.5$ & $\mathbf{1.000}$ & $\mathbf{100.0\%}$ & $\mathbf{0.065}$ & $\mathbf{0.50}$ \\
+\textbf{Centralized Optimum ($\pi^\star$)} & Omniscient Bound & $\mathbf{914.1}$ & $\pm 24.5$ & $\mathbf{1.000}$ & $\mathbf{100.0\%}$ & $\mathbf{0.065}$ & $\mathbf{0.50}$ \\
 \bottomrule
 \end{tabular}
-\caption{Comprehensive quantitative benchmark across all eight evaluated multi-agent coordination approaches on \texttt{proposal\_maze} ($k=3, g=2, \beta=0.5$). Bold highlights indicate primary proposed remedies and theoretical bounds.}
+\caption{Comprehensive quantitative evaluation across all eight baselines and proposed remedies on \texttt{proposal\_maze} ($k=3, g=2, \beta=0.5$). Bold rows highlight proposed methods and the centralized upper bound.}
 \label{tab:benchmark}
 \end{table}
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.88\linewidth]{fig_e4_method_comparison.png}
-  \caption{Multi-panel comparative suite across all eight evaluated algorithms: (a) Expected Team Return $J(\pi)$, (b) Price of Anarchy $\PoA$, (c) Fraction of Selfish Gap Recovered (\%), and (d) Reward Inequality (Gini Index).}
+  \caption{Comprehensive multi-panel benchmark across all eight evaluated algorithms: (a) Expected Team Return $J(\pi)$, (b) Price of Anarchy $\PoA$, (c) Fraction of Selfish Gap Recovered (\%), and (d) Payoff Inequality (Gini Index).}
   \label{fig:e4}
 \end{figure}
 
-DCOP Max-Sum recovers **$62.3\%$** of the selfish efficiency loss while sustaining fewer than $1.0$ ghost captures per episode and an exceptionally fair Gini coefficient ($0.076$). While Centralized Optimum ($\pi^\star$) achieves the maximal return ($914.1$), it requires complete global visibility and centralized control of all entities, which is infeasible in decentralized systems.
+\noindent\textbf{Key Takeaways:} DCOP Max-Sum achieves the strongest decentralized performance, recovering $62.3\%$ of the gap with fewer than $1.0$ ghost captures per episode and the second-lowest inequality ($\mathcal{G} = 0.076$). While the Centralized Hungarian planner achieves the highest return ($914.1$), it requires global state access and centralized control of all entities. DCOP Max-Sum successfully matches $89.7\%$ of the centralized return while operating entirely through bounded local message passing.
 
 % =====================================================================
 \section{Discussion and Limitations}
 % =====================================================================
 
-\paragraph{Communication vs. Incentive Alignment:}
-Our results highlight a key trade-off: DCOP spatial partitioning provides guaranteed collision avoidance and rapid gap recovery with low message overhead ($B=24$), but requires shared regional definitions. Conversely, Shapley value reward shaping requires zero runtime communication during execution, relying instead on offline counterfactual simulations during training.
+\paragraph{Communication vs. Incentive Design:}
+Our findings illustrate a fundamental system design trade-off: DCOP spatial deconfliction provides robust real-time performance under small message budgets ($B=24$), but requires synchronized communication and shared regional representations. In contrast, Shapley value reward shaping requires **zero runtime communication**, enforcing coordination purely through offline counterfactual value alignment during training.
 
 \paragraph{Limitations:}
-First, computing exact Shapley values requires evaluating $2^k$ marginal coalitions, which is computationally tractable for $k \le 5$ but requires Monte Carlo sampling or neural marginal approximations (e.g., Shapley Q-value networks) for larger agent cohorts. Second, ghost behaviors follow stochastic shortest-path heuristics rather than strategic game-theoretic policies.
+First, computing exact Shapley values requires evaluating $2^k$ marginal coalitions, which is tractable for $k \le 5$ but requires Monte Carlo approximations or neural marginal estimators (e.g., Shapley Q-value networks) for larger agent cohorts. Second, ghosts execute stochastic heuristic policies rather than strategic adversarial learning policies.
 
 % =====================================================================
-\section{Author Contributions}
+\section{Contribution}
 % =====================================================================
 
 \begin{table}[H]
 \centering
 \small
-\begin{tabular}{@{}L{3.6cm}L{10.6cm}@{}}
+\begin{tabular}{@{}L{3.4cm}L{7.8cm}L{3.0cm}@{}}
 \toprule
-\textbf{Member} & \textbf{Completed Work \& Implementation Modules} \\
+\textbf{Member} & \textbf{Assigned Tasks \& Completed Modules} & \textbf{Status} \\
 \midrule
 \textbf{Tanuj~Sharma} (23110331) &
-Multi-Agent Pac-Man simulation engine (`src/environment.py`), shallow-cloning graph optimization, retro-arcade maze design (`src/layouts.py`), ghost policies (`src/ghosts.py`), interactive 75\%/25\% Desktop GUI (`play_game.py`), Web Arcade (`play.html`), and **Shapley Value Module (incorporating Dhruv Jalan's proposed work)**: exact Shapley coalition credit assignment (`src/shapley.py`), reward shaping pipeline, Gini fairness evaluation, and Experiment 3 suite (`experiments/run_experiment_3.py`). \\
+Multi-Pac-Man simulator, maze layouts, ghost policies, random and greedy baselines, plus Shapley value credit assignment, Shapley Q-learning, and fairness analysis (Dhruv Jalan dropped the course and Tanuj did the work assigned to Dhruv Jalan). & Completed \& Fulfilled \\
 \addlinespace
 \textbf{Rajput~Vivek} (23110269) &
-Independent Q-learning baseline (`src/q_learning.py`), Hungarian-matching centralized team planner $\pi^\star$ (`src/baselines.py`), Price of Anarchy metric formulation (`src/metrics.py`), Experiment 1 (Team size $k$ vs. Ghost hazard $\beta$), and Experiment 4 benchmark suite (`experiments/run_experiment_4.py`). \\
+Independent Q-learning baseline, centralized team planner $\pi^\star$, equilibrium computation, PoA analysis, and Experiments 1 \& 4. & Completed \& Fulfilled \\
 \addlinespace
 \textbf{Akash~KP} (23110021) &
-DCOP coordination module (`src/dcop.py`), Voronoi and vertical column spatial partitioners, DCOP cost model, Factor Graph Belief Propagation (Max-Sum), Distributed Stochastic Algorithm (DSA), and Experiment 2 communication budget scaling (`experiments/run_experiment_2.py`). \\
+DCOP module (Max-Sum, DSA), spatial region partitioning, message-budget experiments, and Experiment 2. & Completed \& Fulfilled \\
+\addlinespace
+\textbf{Dhruv~Jalan} (23110099) &
+\textit{Dhruv Jalan dropped the course during the term; work completed by Tanuj Sharma as detailed above.} & Course Dropped \\
 \bottomrule
 \end{tabular}
-\caption{Verified individual task allocations and module authorship.}
+\caption{Task assignment, fulfillment status, and individual member contributions.}
 \label{tab:contributions}
 \end{table}
 
-\noindent\textit{Note: Dhruv Jalan's originally planned tasks on Shapley value credit assignment, counterfactual reward shaping, and fairness evaluation were fully absorbed, implemented, and delivered by Tanuj Sharma.}
+\noindent\textit{Note on Group Composition: Dhruv Jalan dropped the course during the semester; Tanuj Sharma absorbed and completed the tasks originally assigned to Dhruv Jalan, ensuring full delivery of the project scope.}
 
 % =====================================================================
 \section{Conclusion}
