@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Course: CS 329 Foundations of AI: Multi-Agent Systems](https://img.shields.io/badge/Course-CS%20329%20Foundations%20of%20AI%3A%20MAS-green.svg)](https://iitgn.ac.in)
 [![Status: Complete](https://img.shields.io/badge/Status-Complete-brightgreen.svg)]()
-[![Play Online](https://img.shields.io/badge/🎮_Play_Live-Online_Arcade-ff007f.svg?style=for-the-badge)](https://tanujsharma2712.github.io/multi-agent-pacman-poa/)
+[![Play Online](https://img.shields.io/badge/🎮_Play_Live-Online_Arcade-ff007f.svg?style=for-the-badge)](https://rajput-vivek-16.github.io/multi-agent-pacman-poa/)
 
 > **CS 329: Foundations of AI: Multi-Agent Systems | Final Project Code & Testbed**  
 > **Indian Institute of Technology Gandhinagar (IITGN)**  
@@ -21,7 +21,7 @@
 > **You can test and play this multi-agent game right now with zero friction!**
 > 
 > * **🌐 Option A: Instant Web Arcade (Anyone Can Play With This Link!)**  
->   **👉 Direct Live Link: [https://tanujsharma2712.github.io/multi-agent-pacman-poa/](https://tanujsharma2712.github.io/multi-agent-pacman-poa/)**  
+>   **👉 Direct Live Link: [https://rajput-vivek-16.github.io/multi-agent-pacman-poa/](https://rajput-vivek-16.github.io/multi-agent-pacman-poa/)**  
 >   *(Zero setup required: works in any web browser on desktop, laptop, tablet, or smartphone! You can also double-click [**`index.html`**](index.html) or [**`play.html`**](play.html) locally).*
 > 
 > * **🖥️ Option B: Desktop Python GUI (75% Arcade Board / 25% Control Station)**  
